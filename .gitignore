@@ -1,0 +1,51 @@
+# ========================
+# GLOBAL & SYSTEM
+# ========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ========================
+# FRONTEND & ROOT MODULES
+# ========================
+# Mengabaikan semua folder node_modules tanpa kecuali
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Build output
+build/
+dist/
+.next/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========================
+# BACKEND (Django/Python)
+# ========================
+# Virtual Environment
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+
+# Bytecode Python
+__pycache__/
+*.pyc
+
+# Database & Rahasia (SANGAT PENTING)
+*.sqlite3
+db.sqlite3
+db.sqlite3-journal
+.env
+.env.local
+.env.*.local
+
+# Media (File upload user)
+media/
