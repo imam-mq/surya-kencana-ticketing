@@ -1,7 +1,18 @@
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Memuat variabel dari file .env
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+<<<<<<< HEAD
+=======
+# Mengambil kunci rahasia secara aman
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dummy-key-untuk-github')
+
+>>>>>>> 5d16269 (Update settings.py)
 DEBUG = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
@@ -84,7 +95,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-AUTH_USER_MODEL = 'accounts.CustomUser'
+AUTH_USER_MODEL = 'accounts.Pengguna'
 
 # ===============================================
 # ✅ CORS & SESSION CONFIGURATION (UPDATED)
