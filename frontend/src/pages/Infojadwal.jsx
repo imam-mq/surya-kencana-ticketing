@@ -16,13 +16,12 @@ export default function Informasijadwal() {
     const [destination, setDestination] = useState("");
     const [date, setDate] = useState("");
 
-    // FETCH SEMUA JADWAL
+    // 🔥 FETCH SEMUA JADWAL (Arahkan ke endpoint pencarian public)
     const fetchJadwal = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API}/jadwal/`);
-            const data = await res.json();
-            setItems(Array.isArray(data) ? data : []);
+            const res = await axios.get(`${API}/schedule/search/`);
+            setItems(Array.isArray(res.data) ? res.data : []);
         } catch (e) {
             console.error("Gagal memuat jadwal:", e);
         } finally {
@@ -30,15 +29,15 @@ export default function Informasijadwal() {
         }
     };
 
-    // FILTER JADWAL
+    // 🔥 FILTER JADWAL (Ubah param ke asal, tujuan, tanggal)
     const getJadwal = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`${API}/jadwal/`, {
+            const res = await axios.get(`${API}/schedule/search/`, {
                 params: {
-                    origin: origin || "",
-                    destination: destination || "",
-                    date: date || ""
+                    asal: origin || "",            // origin -> asal
+                    tujuan: destination || "",     // destination -> tujuan
+                    tanggal: date || ""            // date -> tanggal
                 }
             });
 
@@ -73,7 +72,7 @@ export default function Informasijadwal() {
                     />
 
                     <div className="container mx-auto px-4 max-w-1xl absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-                        <div className="bg-white bg-opacity-70 p-6 rounded-lg shadow-1xl flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 items-center">
+                        <div className="bg-white bg-opacity-70 p-6 rounded-lg shadow-xl flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 items-center">
 
                             {/* ORIGIN */}
                             <div className="flex-1 w-full relative group">
@@ -82,8 +81,8 @@ export default function Informasijadwal() {
                                 </div>
                                 <input
                                     type="text"
-                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg"
-                                    placeholder="Rute Keberangkatan"
+                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Kota Asal"
                                     value={origin}
                                     onChange={(e) => setOrigin(e.target.value)}
                                 />
@@ -91,8 +90,14 @@ export default function Informasijadwal() {
 
                             {/* EXCHANGE ICON */}
                             <div
-                                className="md:w-auto p-2 rounded-full cursor-pointer"
+                                className="md:w-auto p-2 rounded-full cursor-pointer hover:bg-gray-200 transition"
                                 style={{ backgroundColor: "#F3F4F6", color: primaryColor }}
+                                onClick={() => {
+                                    // Fitur opsional: Tukar asal dan tujuan
+                                    const temp = origin;
+                                    setOrigin(destination);
+                                    setDestination(temp);
+                                }}
                             >
                                 <FaExchangeAlt className="text-xl rotate-90 md:rotate-0" />
                             </div>
@@ -104,8 +109,8 @@ export default function Informasijadwal() {
                                 </div>
                                 <input
                                     type="text"
-                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg"
-                                    placeholder="Rute Kedatangan"
+                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Kota Tujuan"
                                     value={destination}
                                     onChange={(e) => setDestination(e.target.value)}
                                 />
@@ -118,7 +123,7 @@ export default function Informasijadwal() {
                                 </div>
                                 <input
                                     type="date"
-                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg"
+                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     value={date}
                                     onChange={(e) => setDate(e.target.value)}
                                 />
@@ -128,7 +133,7 @@ export default function Informasijadwal() {
                             <button
                                 type="button"
                                 onClick={getJadwal}
-                                className="w-full md:w-auto px-6 py-3 rounded-lg text-white font-bold flex items-center justify-center"
+                                className="w-full md:w-auto px-6 py-3 rounded-lg text-white font-bold flex items-center justify-center hover:opacity-90 transition"
                                 style={{ backgroundColor: primaryColor }}
                             >
                                 <FaSearch className="mr-2" /> Cari Bus
@@ -153,42 +158,71 @@ export default function Informasijadwal() {
                                         <th className="px-6 py-4">Tanggal</th>
                                         <th className="px-6 py-4">Kursi Tersedia</th>
                                         <th className="px-6 py-4">Jam</th>
-                                        <th className="px-6 py-4">Ticket</th>
+                                        <th className="px-6 py-4 text-center">Ticket</th>
                                     </tr>
                                 </thead>
 
                                 <tbody>
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={7} className="text-center py-6 text-gray-500">
-                                                Loading...
+                                            <td colSpan={7} className="text-center py-8 text-gray-500">
+                                                Mencari jadwal bus...
                                             </td>
                                         </tr>
                                     ) : items.length === 0 ? (
                                         <tr>
-                                            <td colSpan={7} className="text-center py-6 text-gray-500">
-                                                Tidak ada jadwal tersedia.
+                                            <td colSpan={7} className="text-center py-8 text-gray-500">
+                                                Tidak ada jadwal bus yang ditemukan untuk pencarian ini.
                                             </td>
                                         </tr>
                                     ) : (
                                         items.map((it) => {
-                                            const available = (it.capacity ?? 0) - (it.sold_seats ?? 0);
-                                            const busLabel = it.bus
-                                                ? `${it.bus.name} ${it.bus.code ? `(${it.bus.code})` : ""}`
-                                                : "-";
+                                            // 1. Parsing Tanggal & Jam
+                                            const dateObj = new Date(it.waktu_keberangkatan);
+                                            const dateStr = dateObj.toLocaleDateString("id-ID", {
+                                                day: "numeric", month: "short", year: "numeric"
+                                            });
+                                            const timeStr = dateObj.toLocaleTimeString("id-ID", {
+                                                hour: "2-digit", minute: "2-digit"
+                                            });
+
+                                            // 2. Format Nama Bus
+                                            const busLabel = it.bus_name 
+                                                ? `${it.bus_name} ${it.bus_type ? `(${it.bus_type})` : ""}` 
+                                                : "Bus Standar";
+
+                                            // 🔥 3. PERBAIKAN SISA KURSI: Ambil dari backend
+                                            const capacity = it.kapasitas || 28;
+                                            const sold = it.terjual || 0;
+                                            const sisaKursi = Math.max(0, capacity - sold);
 
                                             return (
-                                                <tr key={it.id} className="border-b border-gray-200">
-                                                    <td className="px-6 py-4">{it.origin}</td>
-                                                    <td className="px-6 py-4">{it.destination}</td>
+                                                <tr key={it.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
+                                                    <td className="px-6 py-4 font-medium">{it.asal}</td>
+                                                    <td className="px-6 py-4 font-medium">{it.tujuan}</td>
                                                     <td className="px-6 py-4">{busLabel}</td>
-                                                    <td className="px-6 py-4">{it.date}</td>
-                                                    <td className="px-6 py-4">{available}</td>
-                                                    <td className="px-6 py-4">{it.time?.slice(0, 5)}</td>
+                                                    <td className="px-6 py-4">{dateStr}</td>
                                                     <td className="px-6 py-4">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                                                            sisaKursi > 0 && it.status === 'active' 
+                                                            ? 'bg-green-100 text-green-700' 
+                                                            : 'bg-red-100 text-red-700'
+                                                        }`}>
+                                                            {/* Jika Nonaktif tampilkan Nonaktif, jika habis tampilkan Penuh, jika ada tampilkan angkanya */}
+                                                            {it.status !== 'active' ? 'Nonaktif' : sisaKursi > 0 ? `${sisaKursi} Tersedia` : 'Penuh'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 font-bold">{timeStr}</td>
+                                                    <td className="px-6 py-4 text-center">
                                                         <button
-                                                            className="px-4 py-2 rounded text-white font-semibold"
-                                                            style={{ backgroundColor: primaryColor }}
+                                                            className={`px-6 py-2 rounded-lg text-white font-semibold transition ${
+                                                                sisaKursi > 0 && it.status === 'active' 
+                                                                ? 'hover:opacity-90' 
+                                                                : 'opacity-50 cursor-not-allowed'
+                                                            }`}
+                                                            style={{ backgroundColor: sisaKursi > 0 && it.status === 'active' ? primaryColor : 'gray' }}
+                                                            disabled={sisaKursi === 0 || it.status !== 'active'}
+                                                            onClick={() => alert(`Fitur pesan tiket untuk ID ${it.id} sedang dalam pengembangan!`)}
                                                         >
                                                             Pesan
                                                         </button>

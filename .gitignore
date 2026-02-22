@@ -49,3 +49,5 @@ db.sqlite3-journal
 
 # Media (File upload user)
 media/
+
+backend/accounts/models.py

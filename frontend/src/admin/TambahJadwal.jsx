@@ -66,35 +66,55 @@ const TambahJadwal = () => {
 
     try {
       setSaving(true);
+
+      // 1. Gabungkan Date & Time menjadi satu string ISO (YYYY-MM-DDTHH:MM)
+      // Contoh: "2026-02-25" + "T" + "10:00" = "2026-02-25T10:00"
+      const keberangkatan = `${form.date}T${form.time}`;
+
+      // 2. (Opsional) Set Waktu Kedatangan Otomatis (Misal +12 jam dari berangkat)
+      // Jika Backend membolehkan null, field ini bisa dihapus. 
+      // Tapi biar aman, kita set saja estimasi sampai.
+      const arrivalDate = new Date(keberangkatan);
+      arrivalDate.setHours(arrivalDate.getHours() + 10); // Asumsi perjalanan 10 jam
+      const kedatangan = arrivalDate.toISOString(); 
+
+      // 3. MAPPING FIELD (PENTING!)
+      // Kiri: Nama field Backend (Django) | Kanan: Nama state Frontend (React)
       const payload = {
-        origin: form.origin,
-        destination: form.destination,
-        date: form.date,
-        time: form.time,
-        price: Number(form.price),
-        capacity: Number(form.capacity || 28),
-        status: form.status,
         bus: Number(form.bus),
+        asal: form.origin,                  // origin -> asal
+        tujuan: form.destination,           // destination -> tujuan
+        waktu_keberangkatan: keberangkatan, // date+time -> waktu_keberangkatan
+        waktu_kedatangan: kedatangan,       // (Opsional, tapi sebaiknya ada)
+        harga: Number(form.price),          // price -> harga
+        status: form.status,
+        // capacity TIDAK PERLU dikirim, karena kapasitas ikut data Bus
       };
 
-      // 2. Post Data dengan Credentials
+      console.log("Mengirim Payload:", payload); // Cek di console browser
+
+      // 4. Kirim ke Backend
       const res = await fetch(`${API}/admin/jadwal/`, {
         method: "POST",
         headers: { 
             "Content-Type": "application/json" 
         },
-        credentials: "include", // <--- PENTING!
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
+      
       if (!res.ok) {
-        throw new Error(data?.message || data?.error || JSON.stringify(data) || `HTTP ${res.status}`);
+        // Tampilkan pesan error detail dari Django (misal: "field asal required")
+        const errorMsg = JSON.stringify(data); 
+        throw new Error(data?.detail || errorMsg || `HTTP ${res.status}`);
       }
 
-      alert("Jadwal berhasil ditambahkan");
-      window.location.href = "/admin/jadwaltiket";
+      alert("Jadwal berhasil ditambahkan!");
+      window.location.href = "/admin/jadwaltiket"; // Redirect
     } catch (e) {
+      console.error(e);
       setErr(`Gagal Simpan: ${e.message}`);
     } finally {
       setSaving(false);
@@ -150,7 +170,8 @@ const TambahJadwal = () => {
                 <option value="">{loadingBus ? "Memuat..." : "Pilih Bus"}</option>
                 {buses.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.name} {b.code ? `[${b.code}]` : ""} {b.is_sleeper ? "(Sleeper)" : ""}
+                    {/* Gunakan b.nama, bukan b.name */}
+                    {b.nama} - {b.tipe} ({b.total_kursi} Kursi)
                   </option>
                 ))}
               </select>

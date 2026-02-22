@@ -90,58 +90,105 @@ const JadwalTiket = () => {
                 </thead>
                 <tbody>
                   {items.map((it) => {
-                    const available = Math.max(0, (it.capacity ?? 0) - (it.sold_seats ?? 0));
-                    const busLabel = it.bus ? `${it.bus.name}${it.bus.code ? ` [${it.bus.code}]` : ""}` : "-";
+                        // 1. Ambil Nama Bus dari Serializer (backend kirim 'bus_name', bukan object 'bus')
+                        const busLabel = it.bus_name ? `${it.bus_name} (${it.bus_type || '-'})` : "Bus Dihapus";
 
-                    const statusLower = (it.status || "").toString().toLowerCase();
-                    const isActive = statusLower === "active" || statusLower === "aktif" || statusLower === "online";
-                    return (
-                      <tr key={it.id} className="border-b border-gray-100">
-                        <td className="p-3">{it.origin}</td>
-                        <td className="p-3">{it.destination}</td>
-                        <td className="p-3">{it.date}</td>
-                        <td className="p-3">{it.time?.slice(0,5)}</td>
-                        <td className="p-3">Rp {Number(it.price || 0).toLocaleString("id-ID")}</td>
-                        <td className="p-3">{available}</td>
-                        <td className="p-3">{busLabel}</td>
-                        <td className="p-3 capitalize">
-                          <Box
-                            component="span"
-                            sx={{
-                              display: "inline-block",
-                              px: 2.5,
-                              py: 0.5,
-                              borderRadius: "30px",
-                              fontWeight: 700,
-                              border: `3px solid ${isActive ? "#22c55e" : "#ef4444"}`,
-                              color: isActive ? "#16a34a" : "#dc2626",
-                              backgroundColor: isActive ? "#ecfdf5" : "#fff1f2",
-                              textTransform: "capitalize",
-                              minWidth: 90,
-                              textAlign: "center",
-                            }}
-                          >
-                            {it.status}
-                          </Box>
-                        </td>
-                        <td className="p-3 text-center">
-                          <div className="flex justify-center gap-3">
-                            <button onClick={() => navigate(`/admin/detail-jadwal/${it.id}`)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded">
-                              <FaEye />
-                            </button>
-                            <button onClick={() => navigate(`/admin/edit-jadwal/${it.id}`)} className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">
-                              <FaEdit />
-                            </button>
-                            <button onClick={() => onDelete(it.id)} className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded">
-                              <FaTrash />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        // 2. Format Tanggal & Jam dari 'waktu_keberangkatan'
+                        const dateObj = new Date(it.waktu_keberangkatan);
+                        const dateStr = dateObj.toLocaleDateString("id-ID", {
+                          day: "numeric", month: "short", year: "numeric"
+                        });
+                        const timeStr = dateObj.toLocaleTimeString("id-ID", {
+                          hour: "2-digit", minute: "2-digit"
+                        });
+
+                        // 3. Cek Status
+                        const statusLower = (it.status || "").toString().toLowerCase();
+                        const isActive = statusLower === "active" || statusLower === "aktif";
+
+                        // 🔥 4. PERBAIKAN: Hitung Kursi dari data Backend
+                        const capacity = it.kapasitas || 28;
+                        const sold = it.terjual || 0;
+                        const available = Math.max(0, capacity - sold); 
+
+                        return (
+                          <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            {/* GANTI origin -> asal */}
+                            <td className="p-3 font-medium">{it.asal}</td>
+                            
+                            {/* GANTI destination -> tujuan */}
+                            <td className="p-3 font-medium">{it.tujuan}</td>
+                            
+                            {/* GANTI date -> dateStr (Format Indo) */}
+                            <td className="p-3">{dateStr}</td>
+                            
+                            {/* GANTI time -> timeStr (Jam) */}
+                            <td className="p-3">{timeStr}</td>
+                            
+                            {/* GANTI price -> harga */}
+                            <td className="p-3 font-semibold text-gray-700">
+                              Rp {Number(it.harga || 0).toLocaleString("id-ID")}
+                            </td>
+                            
+                            {/* 🔥 TAMPILKAN ANGKA SISA KURSI */}
+                            <td className="p-3 text-center font-bold text-blue-700">
+                              {available} / {capacity}
+                            </td>
+                            
+                            {/* Gunakan busLabel yg sudah diperbaiki */}
+                            <td className="p-3">{busLabel}</td>
+                            
+                            <td className="p-3 capitalize">
+                              <Box
+                                component="span"
+                                sx={{
+                                  display: "inline-block",
+                                  px: 2.5,
+                                  py: 0.5,
+                                  borderRadius: "30px",
+                                  fontWeight: 700,
+                                  border: `1px solid ${isActive ? "#22c55e" : "#ef4444"}`, // Sedikit diperhalus border-nya
+                                  color: isActive ? "#15803d" : "#b91c1c",
+                                  backgroundColor: isActive ? "#dcfce7" : "#fee2e2",
+                                  textTransform: "capitalize",
+                                  minWidth: 90,
+                                  textAlign: "center",
+                                  fontSize: "0.85rem"
+                                }}
+                              >
+                                {it.status}
+                              </Box>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex justify-center gap-2">
+                                <button 
+                                    onClick={() => navigate(`/admin/detail-jadwal/${it.id}`)} 
+                                    className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition"
+                                    title="Lihat Detail"
+                                >
+                                  <FaEye />
+                                </button>
+                                <button 
+                                    onClick={() => navigate(`/admin/edit-jadwal/${it.id}`)} 
+                                    className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition"
+                                    title="Edit Jadwal"
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button 
+                                    onClick={() => onDelete(it.id)} 
+                                    className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition"
+                                    title="Hapus Jadwal"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                    })}
                   {!items.length && (
-                    <tr><td colSpan={8} className="p-4 text-center text-gray-500">Belum ada jadwal.</td></tr>
+                    <tr><td colSpan={9} className="p-4 text-center text-gray-500">Belum ada jadwal.</td></tr>
                   )}
                 </tbody>
               </table>

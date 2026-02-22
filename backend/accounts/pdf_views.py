@@ -6,57 +6,45 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from datetime import timedelta
+# Hapus timedelta jika tidak digunakan lagi untuk windowing
 
-from .models import Ticket
-
+from .models import Tiket, Pemesanan
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def agent_ticket_pdf(request):
     user = request.user
 
-    if user.role != "agent":
-        return Response({"error": "Hanya agent"}, status=403)
+    # Verifikasi peran
+    if getattr(user, "peran", None) != "agent":
+        return Response({"error": "Hanya agent yang diizinkan"}, status=403)
 
     ticket_id = request.GET.get("ticket_id")
     if not ticket_id:
-        return Response({"error": "ticket_id wajib"}, status=400)
+        return Response({"error": "ticket_id wajib diisi"}, status=400)
 
     try:
-        first_ticket = Ticket.objects.get(
+        # 🔥 PERBAIKAN: Cari tiket berdasarkan ID dan pastikan pemesan-nya adalah user ini
+        # Kita filter lewat relasi 'pemesanan' karena field pembeli ada di sana
+        target_ticket = Tiket.objects.get(
             id=ticket_id,
-            buyer=user,
-            bought_by="agent"
+            pemesanan__pembeli=user,
+            pemesanan__peran_pembeli="agent"
         )
-    except Ticket.DoesNotExist:
-        return Response({"error": "Tiket tidak ditemukan"}, status=404)
+        
+        # Ambil semua tiket yang berada dalam satu nomor induk Pemesanan yang sama
+        induk_pesanan = target_ticket.pemesanan
+        all_tickets_in_order = induk_pesanan.tiket.all().order_by("nomor_kursi")
+        
+    except Tiket.DoesNotExist:
+        return Response({"error": "Tiket tidak ditemukan atau akses ditolak"}, status=404)
 
-    # Ambil semua tiket dalam 1 transaksi (window 1 menit)
-    start = first_ticket.purchased_at.replace(second=0, microsecond=0)
-    end = start + timedelta(minutes=1)
-
-    tickets = (
-        Ticket.objects
-        .filter(
-            buyer=user,
-            bought_by="agent",
-            schedule=first_ticket.schedule,
-            purchased_at__gte=start,
-            purchased_at__lt=end
-        )
-        .order_by("seat_id")
-    )
-
-    seat_list = ", ".join(t.seat_id for t in tickets)
-
-    # ================= PDF =================
+    # ================= PDF Generator =================
     response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = 'attachment; filename="tiket-surya-kencana.pdf"'
+    response["Content-Disposition"] = f'attachment; filename="tiket-{target_ticket.kode_tiket}.pdf"'
 
     p = canvas.Canvas(response, pagesize=A4)
     width, height = A4
-
     x = 2 * cm
     y = height - 2 * cm
     line_gap = 14
@@ -64,30 +52,8 @@ def agent_ticket_pdf(request):
     def draw(text, bold=False):
         nonlocal y
         p.setFont("Helvetica-Bold" if bold else "Helvetica", 10)
-        p.drawString(x, y, text)
+        p.drawString(x, y, str(text))
         y -= line_gap
-
-    def draw_multiline(text, max_width, bold=False):
-        nonlocal y
-        font = "Helvetica-Bold" if bold else "Helvetica"
-        font_size = 10
-        p.setFont(font, font_size)
-
-        words = text.split(" ")
-        line = ""
-
-        for word in words:
-            test_line = line + word + " "
-            if stringWidth(test_line, font, font_size) <= max_width:
-                line = test_line
-            else:
-                p.drawString(x, y, line)
-                y -= line_gap
-                line = word + " "
-
-        if line:
-            p.drawString(x, y, line)
-            y -= line_gap
 
     def separator(char="=", length=90):
         nonlocal y
@@ -95,61 +61,50 @@ def agent_ticket_pdf(request):
         p.drawString(x, y, char * length)
         y -= line_gap
 
-    t = first_ticket
+    # Shortcut variabel
+    j = target_ticket.jadwal
+    seat_list = ", ".join(tk.nomor_kursi for tk in all_tickets_in_order)
 
     # ================= HEADER =================
     separator("=")
     draw("SURYA KENCANA", bold=True)
-    draw("TIKET BUS RESMI", bold=True)
+    draw("TIKET BUS RESMI - BUKTI PEMBAYARAN", bold=True)
     separator("=")
-    y -= line_gap
+    y -= 5
 
-    # ================= RUTE =================
+    # ================= INFO PERJALANAN =================
     draw("RUTE PERJALANAN", bold=True)
-    draw_multiline(f"{t.origin} → {t.destination}", width - (4 * cm))
-    y -= line_gap
-
-    draw(f"Tanggal      : {t.departure_date.strftime('%d %B %Y')}")
-    draw(f"Jam          : {t.departure_time.strftime('%H:%M')} WIB")
-    draw(f"Tipe Bus     : {t.bus_name} {t.bus_code or ''}")
-    draw(f"No Kursi     : {seat_list}")
-
-    y -= line_gap
+    draw(f"{j.asal} >> {j.tujuan}")
+    draw(f"Tanggal   : {j.waktu_keberangkatan.strftime('%d %B %Y')}")
+    draw(f"Jam       : {j.waktu_keberangkatan.strftime('%H:%M')} WIB")
+    draw(f"Tipe Bus  : {j.bus.nama} ({j.bus.tipe or 'Reguler'})")
+    draw(f"No Kursi  : {seat_list}")
     separator("-")
 
-    # ================= DATA PENUMPANG (FIXED) =================
-    draw("DATA PENUMPANG", bold=True)
-
-    for idx, tk in enumerate(tickets, start=1):
-        draw(f"{idx}. {tk.passenger_name or '-'} | Kursi {tk.seat_id}")
-        draw(f"   KTP : {tk.passenger_ktp or '-'}")
-        draw(f"   HP  : {tk.passenger_phone or '-'}")
-        y -= 4
-
-    y -= line_gap
+    # ================= DATA PENUMPANG =================
+    draw("DAFTAR PENUMPANG", bold=True)
+    for idx, tk in enumerate(all_tickets_in_order, start=1):
+        draw(f"{idx}. {tk.nama_penumpang} (Kursi: {tk.nomor_kursi})")
+        if tk.ktp_penumpang: draw(f"   NIK: {tk.ktp_penumpang}")
+    
     separator("-")
 
-    # ================= PEMBELIAN =================
-    total_price = sum(tk.price_paid for tk in tickets)
-
-    draw("DETAIL PEMBELIAN", bold=True)
-    draw(f"Harga        : Rp {int(total_price):,}".replace(",", "."))
-    draw("Status       : LUNAS")
-    draw("Dibeli Oleh  : Agent")
-    draw(f"Nama Agent   : {user.username}")
-    draw(f"Terbit       : {t.purchased_at.strftime('%d %b %Y %H:%M')}")
-
-    y -= line_gap
+    # ================= RINCIAN HARGA =================
+    draw("DETAIL TRANSAKSI", bold=True)
+    # Harga akhir diambil dari induk Pemesanan
+    draw(f"Total Bayar  : Rp {int(induk_pesanan.harga_akhir):,}".replace(",", "."))
+    draw(f"Status       : {induk_pesanan.status_pembayaran.upper()}")
+    draw(f"Metode       : {induk_pesanan.metode_pembayaran.upper()}")
+    draw(f"Agen         : {user.username}")
+    draw(f"Waktu Cetak  : {target_ticket.dicetak_pada.strftime('%d/%m/%Y %H:%M')}")
     separator("-")
 
-    kode_tiket = f"SK-{t.purchased_at.strftime('%Y%m%d')}-{t.id:06d}"
-    draw(f"Kode Tiket   : {kode_tiket}", bold=True)
-
-    y -= line_gap
-    draw("* Tiket ini sah tanpa tanda tangan")
+    # KODE TIKET UTAMA
+    draw(f"KODE BOOKING : {target_ticket.kode_tiket}", bold=True)
+    y -= 10
+    draw("* Simpan tiket ini sebagai bukti sah untuk naik ke bus.")
     separator("=")
 
     p.showPage()
     p.save()
-
     return response

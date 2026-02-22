@@ -1,308 +1,346 @@
-from rest_framework.decorators import (
-    api_view,
-    permission_classes,
-    authentication_classes
-)
-from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import SessionAuthentication
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth import authenticate, login
-from accounts.models import CustomUser
-import json
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
+from django.contrib.auth import get_user_model
 
-# Import model
-from accounts.models import Bus, Schedule, Ticket, Promo
-from accounts.serializers import (
-    BusSerializer,
-    ScheduleOutSerializer,
-    ScheduleInSerializer,
-    PromoSerializer,
+# IMPORT MODEL BARU (SESUAI ERD)
+from accounts.models import (
+    Pengguna, Bus, Jadwal, Promosi, 
+    Pemesanan, Tiket, PeriodeKomisi, TransferKomisi
 )
 
-# ==========================
-# 1. CLASS AUTH FIX (PENTING)
-# ==========================
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        # Return None artinya: Jangan cek CSRF, lewatkan saja.
-        return None
+# IMPORT SERIALIZER BARU
+from accounts.serializers import (
+    AgentSerializer, 
+    BusSerializer, 
+    ScheduleOutSerializer, 
+    ScheduleInSerializer, 
+    PromoSerializer, 
+    SetoranAgentAdminSerializer
+)
 
-# ==========================
-# 2. LOGIC ADMIN FIX (PENTING)
-# ==========================
-def _is_admin(user):
-    # Cek 1: User harus login
-    if not user or not user.is_authenticated:
-        return False
+# IMPORT AUTH BYPASS
+from accounts.authenticate import CsrfExemptSessionAuthentication
+
+User = get_user_model()
+
+# ================= HELPER =================
+def is_admin(user):
+    return getattr(user, 'peran', None) == 'admin' or user.is_staff
+
+# ================= 1. MANAJEMEN USER & AGENT =================
+
+@api_view(['GET'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def user_list(request):
+    if not is_admin(request.user):
+        return Response({"error": "Unauthorized: Hanya Admin"}, status=403)
     
-    # Cek 2: User boleh masuk jika dia 'admin' ATAU 'superuser' ATAU 'staff'
-    # Akun dari 'createsuperuser' biasanya role-nya kosong/user, jadi perlu user.is_superuser
-    return (
-        getattr(user, "role", None) == "admin" or 
-        user.is_superuser or 
-        user.is_staff
+    # GANTI 'dibuat_pada' menjadi 'date_joined'
+    users = Pengguna.objects.filter(peran='user').values(
+        'id', 'username', 'email', 'nama_lengkap', 'telepon', 'date_joined'
     )
+    return Response(list(users))
 
-# ==========================
-# BUS
-# ==========================
-@api_view(["GET", "POST"])
-@authentication_classes([CsrfExemptSessionAuthentication]) # Wajib ada
+@api_view(['GET'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def agent_list(request):
+    if not is_admin(request.user):
+        return Response({"error": "Unauthorized: Hanya Admin"}, status=403)
+    
+    agents = Pengguna.objects.filter(peran='agent')
+    serializer = AgentSerializer(agents, many=True)
+    return Response(serializer.data)
+
+
+
+@api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication]) # WAJIB ADA
+@permission_classes([IsAuthenticated])
+def add_agent(request):
+    # Pastikan helper is_admin sudah didefinisikan sebelumnya
+    if not is_admin(request.user):
+        return Response({"error": "Forbidden: Akun Anda bukan Admin"}, status=403)
+    
+    serializer = AgentSerializer(data=request.data)
+    if serializer.is_valid():
+        # Paksa set peran menjadi 'agent'
+        serializer.save(peran='agent') 
+        return Response(serializer.data, status=201)
+    return Response(serializer.errors, status=400)
+
+# ================= 2. MANAJEMEN BUS =================
+
+@api_view(['GET', 'POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def admin_bus_list_create(request):
-    # Debug print untuk melihat siapa yang akses di terminal
-    print(f"DEBUG BUS: User={request.user}, Role={getattr(request.user, 'role', 'N/A')}, Super={request.user.is_superuser}")
+    if not is_admin(request.user):
+        return Response({"error": "Unauthorized"}, status=403)
 
-    if not _is_admin(request.user):
-        return Response({"error": "Hanya admin (Akses Ditolak)"}, status=403)
+    if request.method == 'GET':
+        buses = Bus.objects.all()
+        return Response(BusSerializer(buses, many=True).data)
+    
+    elif request.method == 'POST':
+        serializer = BusSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
-    if request.method == "GET":
-        qs = Bus.objects.all().order_by("id")
-        return Response(BusSerializer(qs, many=True).data)
+# ================= 3. MANAJEMEN JADWAL =================
 
-    # POST
-    serializer = BusSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    bus = serializer.save()
-    return Response(BusSerializer(bus).data, status=201)
-
-
-# ==========================
-# JADWAL
-# ==========================
-@api_view(["GET", "POST"])
+@api_view(['GET', 'POST'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def admin_jadwal_list_create(request):
-    if not _is_admin(request.user):
-        return Response({"error": "Hanya admin (Akses Ditolak)"}, status=403)
+    if not is_admin(request.user):
+        return Response({"error": "Unauthorized"}, status=403)
 
-    if request.method == "GET":
-        qs = Schedule.objects.select_related("bus").all()
-        return Response(ScheduleOutSerializer(qs, many=True).data)
+    if request.method == 'GET':
+        jadwals = Jadwal.objects.select_related('bus').all().order_by('-waktu_keberangkatan')
+        return Response(ScheduleOutSerializer(jadwals, many=True).data)
 
-    # POST
-    print("DEBUG JADWAL DATA:", request.data) # Cek data yang dikirim frontend
-    serializer = ScheduleInSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    schedule = serializer.save()
-    return Response(ScheduleOutSerializer(schedule).data, status=201)
+    elif request.method == 'POST':
+        serializer = ScheduleInSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
-
-@api_view(["GET", "PUT", "DELETE"])
+@api_view(['GET', 'PUT', 'DELETE'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def admin_jadwal_detail(request, pk):
-    if not _is_admin(request.user):
-        return Response({"error": "Hanya admin (Akses Ditolak)"}, status=403)
+    if not is_admin(request.user):
+        return Response({"error": "Unauthorized"}, status=403)
 
-    try:
-        schedule = Schedule.objects.select_related("bus").get(pk=pk)
-    except Schedule.DoesNotExist:
-        return Response({"error": "Jadwal tidak ditemukan"}, status=404)
+    jadwal = get_object_or_404(Jadwal, pk=pk)
 
-    if request.method == "GET":
-        tickets = Ticket.objects.filter(schedule=schedule)
-        data = ScheduleOutSerializer(schedule).data
-        data["tickets"] = [
-            {
-                "seat": t.seat_id,
-                "passenger": t.passenger_name,
-                "status": t.payment_status,
-            }
-            for t in tickets
-        ]
-        return Response(data)
+    if request.method == 'GET':
+        return Response(ScheduleOutSerializer(jadwal).data)
 
-    if request.method == "PUT":
-        serializer = ScheduleInSerializer(schedule, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        schedule = serializer.save()
-        return Response(ScheduleOutSerializer(schedule).data)
+    elif request.method == 'PUT':
+        serializer = ScheduleInSerializer(jadwal, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
 
-    # DELETE/CANCEL
-    schedule.status = "canceled"
-    schedule.save(update_fields=["status"])
-    return Response({"success": True, "message": "Jadwal dibatalkan"})
+    elif request.method == 'DELETE':
+        jadwal.delete()
+        return Response({"message": "Jadwal berhasil dihapus"}, status=204)
 
+# ================= 4. MANAJEMEN PROMO =================
 
-# ==========================
-# PROMO
-# ==========================
-from django.utils.timezone import now
-import calendar
-from datetime import datetime
-
-@api_view(["GET", "POST"])
+@api_view(['GET', 'POST'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def admin_promo_list_create(request):
-    if not _is_admin(request.user):
-        return Response({"error": "Hanya admin"}, status=403)
+    if not is_admin(request.user):
+        return Response({"error": "Unauthorized"}, status=403)
 
-    if request.method == "GET":
-        promos = Promo.objects.all().order_by("-created_at")
+    if request.method == 'GET':
+        promos = Promosi.objects.all().order_by('-id')
         return Response(PromoSerializer(promos, many=True).data)
-
-    # ===== POST PROMO =====
-    data = request.data.copy()
-    start_date_str = data.get("start_date")
     
-    if not start_date_str:
-        return Response({"error": "start_date wajib"}, status=400)
-
-    try:
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-    except ValueError:
-        return Response({"error": "Format tanggal harus YYYY-MM-DD"}, status=400)
-
-    year = start_date.year
-    month = start_date.month
-    last_day = calendar.monthrange(year, month)[1]
-    end_date = start_date.replace(day=last_day)
-
-    data["start_date"] = start_date
-    data["end_date"] = end_date
-
-    serializer = PromoSerializer(data=data)
-    serializer.is_valid(raise_exception=True)
-    promo = serializer.save()
-
-    return Response(PromoSerializer(promo).data, status=201)
-
-
-@api_view(["GET", "PUT", "DELETE"])
+    elif request.method == 'POST':
+        serializer = PromoSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+    
+@api_view(['GET', 'PUT', 'DELETE'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def admin_promo_detail(request, promo_id):
-    if not _is_admin(request.user):
-        return Response({"error": "Hanya admin"}, status=403)
+    if not is_admin(request.user):
+        return Response({"error": "Unauthorized"}, status=403)
+    
+    promo = get_object_or_404(Promosi, pk=promo_id)
 
-    try:
-        promo = Promo.objects.get(id=promo_id)
-    except Promo.DoesNotExist:
-        return Response({"error": "Promo tidak ditemukan"}, status=404)
-
-    if request.method == "GET":
+    if request.method == 'GET':
         return Response(PromoSerializer(promo).data)
-
-    if request.method == "PUT":
+    
+    elif request.method == 'PUT':
         serializer = PromoSerializer(promo, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        return Response(PromoSerializer(serializer.save()).data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+    
+    elif request.method == 'DELETE':
+        promo.delete()
+        return Response({"message": "Promo berhasil dihapus"}, status=204)
 
-    promo.delete()
-    return Response({"success": True, "message": "Promo dihapus"})
+# ================= 5. LAPORAN & VALIDASI SETORAN =================
 
+@api_view(['GET'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def admin_setoran_list(request):
+    if not is_admin(request.user):
+        return Response({"error": "Unauthorized"}, status=403)
+    
+    
+    setorans = TransferKomisi.objects.select_related('periode__agen').all().order_by('-tanggal_transfer')
+    return Response(SetoranAgentAdminSerializer(setorans, many=True).data)
 
-# ==========================
-# LOGIN API (JANGAN LUPA BAGIAN INI)
-# ==========================
-@csrf_exempt
-def login_admin_api(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "POST only"}, status=405)
+@api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def admin_validasi_setoran(request, pk):
+    # Pastikan yang login admin
+    if getattr(request.user, "peran", None) != "admin":
+        return Response({"error": "Unauthorized"}, status=403)
+    
+    # 🔥 Frontend mengirim ID PeriodeKomisi, jadi cari dari periodenya
+    periode = get_object_or_404(PeriodeKomisi, pk=pk)
+    transfer = periode.transfer.first() # Ambil transfernya
 
-    try:
-        data = json.loads(request.body.decode("utf-8"))
-        username = data.get("username")
-        password = data.get("password")
+    if not transfer:
+        return Response({"error": "Data bukti transfer tidak ditemukan"}, status=404)
 
-        user = authenticate(request, username=username, password=password)
+    # 🔥 Tangkap payload 'aksi' dari React ('terima' atau 'tolak')
+    aksi = request.data.get('aksi')
 
-        if not user:
-            return JsonResponse({"success": False, "message": "Login gagal"}, status=401)
+    if aksi == 'terima':
+        try:
+            with transaction.atomic():
+                # 1. Update status transfer
+                transfer.status = 'approved'
+                transfer.divalidasi_oleh = request.user
+                transfer.divalidasi_pada = timezone.now()
+                transfer.save()
+                
+                # 2. Update status periode induk
+                periode.status = 'approved'
+                periode.save()
+                
+                # 3. Update status komisi tiket menjadi 'paid' (LUNAS)
+                from accounts.models import KomisiAgen
+                tiket_ids = periode.item.values_list('tiket_id', flat=True)
+                KomisiAgen.objects.filter(tiket_id__in=tiket_ids).update(status='paid')
+                
+            return Response({"success": True, "message": "Setoran berhasil diterima."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
 
-        # Cek Logic yang sama dengan _is_admin
-        is_authorized = (
-            getattr(user, "role", None) == "admin" or 
-            user.is_superuser or 
-            user.is_staff
+    elif aksi == 'tolak':
+        # Ubah status jadi ditolak dengan catatan audit lengkap
+        transfer.status = 'rejected'
+        transfer.divalidasi_oleh = request.user
+        transfer.divalidasi_pada = timezone.now()
+        transfer.save()
+        
+        periode.status = 'rejected'
+        periode.save()
+        
+        return Response({"success": True, "message": "Setoran ditolak."})
+    
+    return Response({"error": "Aksi tidak dikenali"}, status=400)
+
+#==================Laporan Agent Transaksi=================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_laporan_transaksi(request):
+    # 1. Pastikan yang login benar-benar Admin
+    if getattr(request.user, "peran", None) != "admin":
+        return Response({"error": "Akses ditolak"}, status=403)
+
+    # 2. Tangkap parameter dari Frontend (React)
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    search_agent = request.GET.get('q')
+
+    # 3. Ambil data setoran (PeriodeKomisi) urut dari yang paling baru
+    qs = PeriodeKomisi.objects.all().order_by('-dibuat_pada')
+
+    # 4. Terapkan Filter Tanggal
+    if start_date:
+        qs = qs.filter(tanggal_mulai__gte=start_date)
+    if end_date:
+        qs = qs.filter(tanggal_selesai__lte=end_date)
+
+    # 5. Terapkan Filter Pencarian Nama Agent
+    if search_agent:
+        qs = qs.filter(
+            Q(agen__username__icontains=search_agent) | 
+            Q(agen__nama_lengkap__icontains=search_agent)
         )
 
-        if not is_authorized:
-            return JsonResponse({"success": False, "message": "Bukan akun admin"}, status=403)
+    # 6. Susun Data Sesuai Permintaan Frontend
+    data = []
+    for periode in qs:
+        status_frontend = "MENUNGGU"
+        if periode.status == "approved":
+            status_frontend = "DITERIMA"
+        elif periode.status == "rejected":
+            status_frontend = "DITOLAK"
+        elif periode.status == "waiting_validation":
+            status_frontend = "MENUNGGU"
 
-        login(request, user)  # SESSION DIBUAT DI SINI
+        # 🔥 AMBIL DATA BUKTI TRANSFER
+        transfer = periode.transfer.first() # Mengambil dari relasi related_name='transfer'
+        bukti_url = transfer.bukti_file.url if transfer and transfer.bukti_file else None
 
-        return JsonResponse({
-            "success": True,
-            "id": user.id,
-            "username": user.username,
-            "role": getattr(user, "role", "superuser"), # Kirim role biar frontend ga bingung
+        data.append({
+            "id": periode.id,
+            "periode_awal": periode.tanggal_mulai.strftime('%Y-%m-%d'),
+            "periode_akhir": periode.tanggal_selesai.strftime('%Y-%m-%d'),
+            "agent_name": periode.agen.nama_lengkap or periode.agen.username, 
+            "total_tagihan": float(periode.total_setor) + float(periode.total_komisi), # Kotor (Bruto)
+            "total_komisi": float(periode.total_komisi),
+            "total_bayar": float(periode.total_setor), # 🔥 Ditambahkan untuk React (Nett Setoran)
+            "status": status_frontend,
+            "bukti_transfer": bukti_url # 🔥 Ditambahkan untuk Modal React
         })
-    except Exception as e:
-        return JsonResponse({"success": False, "message": str(e)}, status=500)
 
-# ==========================
-# USER LIST Bagian Yang Sudah Registrasi
-# ==========================
-@csrf_exempt
-def user_list(request):
-    """Tampilkan hanya user biasa (bukan admin, bukan agent)"""
-    users = CustomUser.objects.filter(role='user', is_superuser=False).values(
-        "id", "username", "email", "date_joined", "is_active"
-    )
-    return JsonResponse(list(users), safe=False)
+    return Response(data)
 
-# ==========================
-# AGEN LIST Bagian Yang Sudah Di Buatkan Akun Oleh Admin
-# ==========================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_laporan_transaksi_detail(request, pk):
+    if getattr(request.user, "peran", None) != "admin":
+        return Response({"error": "Akses ditolak"}, status=403)
 
-@csrf_exempt
-def agent_list(request):
-    """Tampilkan hanya agent (bukan admin)"""
-    agents = CustomUser.objects.filter(role='agent', is_superuser=False).values(
-        "id", "first_name", "last_name", "email", "phone",
-        "commission_percent", "lokasi", "role", "date_joined", "is_active"
-    )
-    return JsonResponse(list(agents), safe=False)
+    periode = get_object_or_404(PeriodeKomisi, pk=pk)
+    items = periode.item.select_related('tiket__jadwal__bus', 'tiket__pemesanan').all()
 
-# ==========================
-# Bagian admin jika ingin menambahkan agent baru
-# ==========================
+    data = []
+    for item in items:
+        tiket = item.tiket
+        jadwal = tiket.jadwal if tiket else None
+        bus = jadwal.bus if jadwal else None
+        
+        # PENYESUAIAN SESUAI MODELS.PY ABANG
+        # Gunakan 'tipe' karena di model Bus Abang kolomnya bernama 'tipe'
+        info_bus = f"{bus.nama} [{bus.tipe}]" if bus else "Bus Tidak Ditemukan"
+        
+        rute_asal = jadwal.asal if jadwal else "-"
+        rute_tujuan = jadwal.tujuan if jadwal else "-"
+        waktu = jadwal.waktu_keberangkatan.strftime("%H:%M") if jadwal else "00:00"
+        harga_tkt = float(jadwal.harga) if jadwal else 0
+        
+        data.append({
+            "tanggal": tiket.pemesanan.dibuat_pada.strftime("%d %b %Y") if tiket and tiket.pemesanan else "-",
+            "bus": info_bus, # Sudah menggunakan bus.nama dan bus.tipe
+            "namaPenumpang": tiket.nama_penumpang if tiket else "-",
+            "kursi": tiket.nomor_kursi if tiket else "-",
+            "keterangan": rute_asal,
+            "kedatangan": rute_tujuan,
+            "jam": waktu,
+            "harga": harga_tkt,
+            "komisi": float(item.jumlah_komisi),
+        })
 
-
-@csrf_exempt
-def add_agent(request):
-    """Admin menambahkan agent baru"""
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            nama = data.get("first_name")
-            email = data.get("email")
-            password = data.get("password")
-            phone = data.get("phone")
-
-            if not all([nama, email, password]):
-                return JsonResponse({"error": "Nama, email, dan password wajib diisi"}, status=400)
-
-            if CustomUser.objects.filter(email=email).exists():
-                return JsonResponse({"error": "Email sudah digunakan"}, status=400)
-
-            agent = CustomUser.objects.create_user(
-                username=nama,
-                email=email,
-                password=password,
-                first_name=nama,
-                last_name=data.get("last_name", ""),
-                phone=phone,
-                role="agent",
-                commission_percent=data.get("commission_percent", 10.0),  # default 10%
-                lokasi=data.get("lokasi") or data.get("location", "-"),
-            )
-
-            return JsonResponse({
-                "id": agent.id,
-                "username": agent.username,
-                "email": agent.email,
-                "role": agent.role,
-                "date_joined": agent.date_joined,
-            }, status=201)
-
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-    return JsonResponse({"message": "Gunakan metode POST"}, status=405)
+    return Response(data)

@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,18 +15,19 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # third-party
+    # Third-party apps
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
 
-    # apps
+    # Local apps
     'accounts',
 ]
 
-# ✅ PERBAIKAN 1: Urutan Authentication (Session harus di atas JWT jika pakai Cookie)
+# ✅ KONFIGURASI REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        'accounts.authenticate.CsrfExemptSessionAuthentication', # ARAHKAN KE FILE BARU
         'rest_framework.authentication.SessionAuthentication', 
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -34,12 +36,14 @@ REST_FRAMEWORK = {
     ),
 }
 
+# ✅ URUTAN MIDDLEWARE (Sangat krusial untuk CORS)
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  
+    'corsheaders.middleware.CorsMiddleware', # Harus di urutan pertama
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # Biarkan aktif, bypass dilakukan secara spesifik di level view atau class auth kustom
+    'django.middleware.csrf.CsrfViewMiddleware', 
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -71,6 +75,9 @@ DATABASES = {
     }
 }
 
+# ✅ MODEL PENGGUNA KUSTOM
+AUTH_USER_MODEL = 'accounts.Pengguna' # Pastikan mengarah ke model baru
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -79,19 +86,18 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Jakarta' # Sesuaikan dengan waktu Indonesia
 USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-AUTH_USER_MODEL = 'accounts.CustomUser'
 
 # ===============================================
-# ✅ CORS & SESSION CONFIGURATION (UPDATED)
+# ✅ CORS & SESSION CONFIGURATION (FULL FIX)
 # ===============================================
 
-# ✅ PERBAIKAN 2: Tambahkan port 5173 (Vite) karena seringkali React lari ke sana
+# Daftar port Frontend yang diizinkan (React/Vite)
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:3000",
@@ -99,6 +105,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
 
+# Penting agar Django mempercayai asal request untuk validasi CSRF
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:3000",
@@ -106,18 +113,18 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
 ]
 
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_CREDENTIALS = True # Wajib True agar Cookie Session bisa dikirim
 
-# Agar frontend bisa baca token CSRF dari cookie
+# Pengaturan Cookie agar bisa dibaca lintas port di localhost
 CSRF_COOKIE_HTTPONLY = False 
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
 
-# Nonaktifkan Secure jika masih tahap development (HTTP)
+# Karena masih development (HTTP), set ini ke False
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
 
-APPEND_SLASH = False
+APPEND_SLASH = False # Menghindari error redirect 301 pada POST request
 
 CORS_ALLOW_HEADERS = [
     "accept",
@@ -129,3 +136,7 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
 ]
+
+# Konfigurasi Media (Upload Gambar Bus/Bukti Transfer)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

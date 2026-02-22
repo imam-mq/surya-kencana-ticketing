@@ -1,610 +1,192 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; 
 import { useNavigate } from "react-router-dom";
+import axios from "axios"; 
+
+// HANYA IMPORT DARI CHAKRA UI
 import {
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  Button,
-  InputAdornment,
-  Card,
-  CardContent,
-} from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+  Box, Flex, Heading, Text, Input, Button, 
+  TableContainer, Table, Thead, Tbody, Tr, Th, Td, Badge,
+  Card, CardBody, Spinner, useToast, Icon
+} from "@chakra-ui/react";
+
+import { FaCalendarAlt, FaSearch } from "react-icons/fa";
+
 import Sidebar from "../layout/Sidebar";
 import AdminNavbar from "../layout/AdminNavbar";
+import ModalValidasiTransfer from "../../components/ui/ModalValidasiTransfer";
 
 const Btransfer = () => {
   const navigate = useNavigate();
-  const [startDate, setStartDate] = useState("2025-08-01");
-  const [endDate, setEndDate] = useState("2025-09-31");
+  const toast = useToast();
+  
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  
+  const [transferData, setTransferData] = useState([]); 
+  const [loading, setLoading] = useState(true);
 
-  // Sample data
-  const [transferData] = useState([
-    {
-      no: 1,
-      priode: "01-30 2025",
-      komisi: "25%",
-      namaAgent: "Agentsumbawakecmatansanggardaerah",
-      totalTransaksi: "Rp.5.600.000",
-      totalKomisi: "Rp.1.350.000",
-      totalSetor: "Rp.1.350.000",
-      buktiTransfer: "bukti1.jpg",
-      status: "pending",
-    },
-    {
-      no: 2,
-      priode: "01-30 2025",
-      komisi: "25%",
-      namaAgent: "Agentsumbawakecmatansanggardaerah",
-      totalTransaksi: "Rp.5.600.000",
-      totalKomisi: "Rp.1.350.000",
-      totalSetor: "Rp.1.350.000",
-      buktiTransfer: "bukti2.jpg",
-      status: "sudah bayar",
-    },
-    {
-      no: 3,
-      priode: "01-30 2025",
-      komisi: "25%",
-      namaAgent: "Agentsumbawakecmatansanggardaerah",
-      totalTransaksi: "Rp.5.600.000",
-      totalKomisi: "Rp.1.350.000",
-      totalSetor: "Rp.1.350.000",
-      buktiTransfer: "bukti3.jpg",
-      status: "belum bayar",
-    },
-  ]);
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
-  const filteredData = transferData.filter((item) =>
-    item.namaAgent.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleValidasi = (no) => {
-    alert(`Validasi transfer untuk nomor ${no}`);
-    // TODO: Implement validation logic
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "pending":
-        return { 
-          bg: "#fff3e0", 
-          color: "#e65100", 
-          label: "PENDING",
-          border: "#ffb74d"
-        };
-      case "sudah bayar":
-        return { 
-          bg: "#e8f5e9", 
-          color: "#2e7d32", 
-          label: "SUDAH BAYAR",
-          border: "#66bb6a"
-        };
-      case "belum bayar":
-        return { 
-          bg: "#ffebee", 
-          color: "#c62828", 
-          label: "BELUM BAYAR",
-          border: "#ef5350"
-        };
-      default:
-        return { 
-          bg: "#f5f5f5", 
-          color: "#616161", 
-          label: status.toUpperCase(),
-          border: "#bdbdbd"
-        };
+  const fetchTransferData = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get("http://127.0.0.1:8000/api/accounts/admin/laporan-transaksi/", {
+        withCredentials: true,
+        params: { start_date: startDate, end_date: endDate, q: searchTerm }
+      });
+      setTransferData(response.data);
+    } catch (error) {
+      console.error("Gagal ambil data:", error);
+      toast({
+        title: "Gagal memuat data",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchTransferData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate]);
+
+  const handleOpenValidasi = (item) => {
+    setSelectedItem(item);
+    setOpenModal(true);
+  };
+
+  const getStatusStyle = (status) => {
+    const s = status ? status.toUpperCase() : ""; 
+    switch (s) {
+      case "MENUNGGU": return { colorScheme: "yellow", label: "PENDING" };
+      case "DITERIMA": return { colorScheme: "green", label: "SUDAH BAYAR" };
+      case "DITOLAK":  return { colorScheme: "red", label: "DITOLAK" };
+      default: return { colorScheme: "gray", label: s };
+    }
+  };
+
+  const formatRupiah = (num) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(num || 0);
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <Flex minH="100vh" bg="gray.50">
       <Sidebar />
-      <div className="flex-1">
+      <Box flex="1" flexDirection="column">
         <AdminNavbar />
         
-        <Box sx={{ p: 4 }}>
-          {/* Header */}
-          <Box sx={{ mb: 4 }}>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 800,
-                color: "#1a1a1a",
-                mb: 1,
-                letterSpacing: "-0.5px",
-              }}
-            >
-              Laporan Agent Transfer
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: "#666",
-                fontSize: "0.95rem",
-              }}
-            >
-              Kelola dan validasi transfer komisi agent
-            </Typography>
+        <Box p={8}>
+          <Box mb={6}>
+            <Heading size="lg" color="gray.800" mb={1}>Laporan Agent Transfer</Heading>
+            <Text color="gray.500">Kelola dan validasi transfer komisi agent</Text>
           </Box>
 
-          {/* Filter Card */}
-          <Card
-            sx={{
-              mb: 3,
-              borderRadius: "12px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-              border: "1px solid #e0e0e0",
-            }}
-          >
-            <CardContent sx={{ p: 3 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                  flexWrap: "wrap",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <CalendarTodayIcon sx={{ color: "#1976d2", fontSize: 20 }} />
-                  <Typography
-                    variant="body1"
-                    sx={{ 
-                      fontWeight: 700, 
-                      color: "#1a1a1a",
-                      minWidth: "100px",
-                      fontSize: "0.95rem"
-                    }}
-                  >
-                    Pilih Priode
-                  </Typography>
-                </Box>
-
-                <TextField
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  size="small"
-                  sx={{
-                    width: "180px",
-                    backgroundColor: "#f8f9fa",
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "8px",
-                      "&:hover fieldset": {
-                        borderColor: "#1976d2",
-                      },
-                      "&.Mui-focused fieldset": {
-                        borderColor: "#1976d2",
-                        borderWidth: "2px",
-                      },
-                    },
-                  }}
-                />
-
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    color: "#999",
-                    fontWeight: 400,
-                    mx: -1
-                  }}
-                >
-                  —
-                </Typography>
-
-                <TextField
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  size="small"
-                  sx={{
-                    width: "180px",
-                    backgroundColor: "#f8f9fa",
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "8px",
-                      "&:hover fieldset": {
-                        borderColor: "#1976d2",
-                      },
-                      "&.Mui-focused fieldset": {
-                        borderColor: "#1976d2",
-                        borderWidth: "2px",
-                      },
-                    },
-                  }}
-                />
-
-                <Box sx={{ flexGrow: 1 }} />
-
-                <TextField
-                  placeholder="Cari Nama Agent..."
-                  variant="outlined"
-                  size="small"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  sx={{
-                    minWidth: "320px",
-                    backgroundColor: "#f8f9fa",
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "25px",
-                      paddingLeft: "8px",
-                      "& fieldset": {
-                        borderColor: "#e0e0e0",
-                      },
-                      "&:hover fieldset": {
-                        borderColor: "#1976d2",
-                      },
-                      "&.Mui-focused fieldset": {
-                        borderColor: "#1976d2",
-                        borderWidth: "2px",
-                      },
-                    },
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon sx={{ color: "#666", fontSize: 20 }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Box>
-            </CardContent>
+          <Card mb={6} borderRadius="xl" shadow="sm" border="1px solid" borderColor="gray.200">
+            <CardBody>
+              <Flex gap={4} align="center" wrap="wrap">
+                <Flex align="center" gap={3} flex={1} minW="200px">
+                  <Icon as={FaCalendarAlt} color="blue.500" boxSize={5} />
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} size="md" />
+                  <Text color="gray.500">—</Text>
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} size="md" />
+                </Flex>
+                
+                <Flex align="center" gap={3} flex={1} minW="200px">
+                  <Icon as={FaSearch} color="gray.400" boxSize={5} />
+                  <Input 
+                    type="text" 
+                    placeholder="Cari nama agent..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && fetchTransferData()}
+                  />
+                </Flex>
+                
+                <Button colorScheme="blue" px={8} onClick={fetchTransferData}>Cari</Button>
+              </Flex>
+            </CardBody>
           </Card>
 
-          {/* Table */}
-          <TableContainer
-            component={Paper}
-            sx={{
-              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-              borderRadius: "12px",
-              overflow: "hidden",
-              border: "1px solid #e0e0e0",
-            }}
-          >
-            <Table sx={{ minWidth: 1200 }}>
-              <TableHead>
-                <TableRow 
-                  sx={{ 
-                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  }}
-                >
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      width: "50px",
-                      textAlign: "center",
-                    }}
-                  >
-                    NO
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      width: "100px",
-                    }}
-                  >
-                    PRIODE
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      width: "80px",
-                      textAlign: "center",
-                    }}
-                  >
-                    KOMISI
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      minWidth: "180px",
-                    }}
-                  >
-                    NAMA AGENT
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      width: "140px",
-                    }}
-                  >
-                    TOTAL<br/>TRANSAKSI
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      width: "130px",
-                    }}
-                  >
-                    TOTAL<br/>KOMISI
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      width: "130px",
-                    }}
-                  >
-                    TOTAL<br/>SETOR
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      width: "120px",
-                      textAlign: "center",
-                    }}
-                  >
-                    BUKTI<br/>TRANSFER
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      width: "130px",
-                      textAlign: "center",
-                    }}
-                  >
-                    STATUS
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontWeight: 700,
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      borderBottom: "none",
-                      py: 2,
-                      width: "120px",
-                      textAlign: "center",
-                    }}
-                  >
-                    AKSI
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredData.map((item, index) => {
-                  const statusStyle = getStatusColor(item.status);
-                  return (
-                    <TableRow
-                      key={item.no}
-                      sx={{
-                        "&:hover": {
-                          backgroundColor: "#f8f9fa",
-                          transition: "all 0.2s ease",
-                        },
-                        backgroundColor: index % 2 === 0 ? "#ffffff" : "#fafafa",
-                      }}
-                    >
-                      <TableCell 
-                        sx={{ 
-                          color: "#333", 
-                          fontSize: "0.875rem",
-                          fontWeight: 700,
-                          textAlign: "center",
-                        }}
-                      >
-                        {item.no}
-                      </TableCell>
-                      <TableCell 
-                        sx={{ 
-                          color: "#555", 
-                          fontSize: "0.875rem",
-                          fontWeight: 500,
-                        }}
-                      >
-                        {item.priode}
-                      </TableCell>
-                      <TableCell 
-                        sx={{ 
-                          color: "#1976d2", 
-                          fontSize: "0.875rem",
-                          fontWeight: 700,
-                          textAlign: "center",
-                        }}
-                      >
-                        {item.komisi}
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#333",
-                          fontSize: "0.875rem",
-                          fontWeight: 500,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          maxWidth: "180px",
-                        }}
-                        title={item.namaAgent}
-                      >
-                        {item.namaAgent}
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#2e7d32",
-                          fontSize: "0.875rem",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {item.totalTransaksi}
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#1565c0",
-                          fontSize: "0.875rem",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {item.totalKomisi}
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#d32f2f",
-                          fontSize: "0.875rem",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {item.totalSetor}
-                      </TableCell>
-                      <TableCell sx={{ textAlign: "center" }}>
-                        <Chip
-                          label="VIEW FILE"
-                          size="small"
-                          sx={{
-                            backgroundColor: "#fff3e0",
-                            color: "#e65100",
-                            fontWeight: 700,
-                            fontSize: "0.65rem",
-                            cursor: "pointer",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.3px",
-                            border: "1.5px solid #ffb74d",
-                            height: "26px",
-                            "&:hover": {
-                              backgroundColor: "#ffe0b2",
-                              transform: "translateY(-2px)",
-                              boxShadow: "0 4px 8px rgba(230,81,0,0.2)",
-                            },
-                            transition: "all 0.2s ease",
-                          }}
-                          onClick={() =>
-                            alert(`View file: ${item.buktiTransfer}`)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell sx={{ textAlign: "center" }}>
-                        <Chip
-                          label={statusStyle.label}
-                          size="small"
-                          sx={{
-                            backgroundColor: statusStyle.bg,
-                            color: statusStyle.color,
-                            fontWeight: 700,
-                            fontSize: "0.65rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.3px",
-                            border: `1.5px solid ${statusStyle.border}`,
-                            px: 0.5,
-                            height: "26px",
-                            minWidth: "95px",
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ textAlign: "center" }}>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          startIcon={<VisibilityIcon sx={{ fontSize: 14 }} />}
-                          onClick={() => handleValidasi(item.no)}
-                          sx={{
-                            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                            textTransform: "none",
-                            fontSize: "0.75rem",
-                            fontWeight: 700,
-                            borderRadius: "8px",
-                            px: 2,
-                            py: 0.8,
-                            boxShadow: "0 4px 8px rgba(102,126,234,0.3)",
-                            "&:hover": {
-                              background: "linear-gradient(135deg, #764ba2 0%, #667eea 100%)",
-                              boxShadow: "0 6px 12px rgba(102,126,234,0.4)",
-                              transform: "translateY(-2px)",
-                            },
-                            transition: "all 0.2s ease",
-                          }}
-                        >
-                          Validasi
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
+          <TableContainer bg="white" borderRadius="xl" border="1px solid" borderColor="gray.200" shadow="sm">
+            <Table variant="simple">
+              <Thead bg="gray.100">
+                <Tr>
+                  <Th>No</Th>
+                  <Th>Periode</Th>
+                  <Th>Agent</Th>
+                  <Th isNumeric>Tagihan</Th>
+                  <Th isNumeric>Setor</Th>
+                  <Th textAlign="center">Bukti</Th>
+                  <Th textAlign="center">Status</Th>
+                  <Th textAlign="center">Aksi</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {loading ? (
+                  <Tr>
+                    <Td colSpan={8} textAlign="center" py={10}>
+                      <Spinner size="md" color="blue.500" mr={3} /> Memuat data...
+                    </Td>
+                  </Tr>
+                ) : transferData.length === 0 ? (
+                  <Tr><Td colSpan={8} textAlign="center" py={10} color="gray.500">Belum ada data setoran.</Td></Tr>
+                ) : (
+                  transferData.map((item, index) => {
+                    const style = getStatusStyle(item.status); 
+
+                    return (
+                      <Tr key={item.id} _hover={{ bg: "blue.50" }} transition="all 0.2s">
+                        <Td>{index + 1}</Td>
+                        <Td fontSize="sm">{item.periode_awal} s/d {item.periode_akhir}</Td>
+                        <Td fontWeight="bold" color="gray.700">{item.agent_name}</Td>
+                        
+                        <Td isNumeric fontWeight="semibold" color="green.600">{formatRupiah(item.total_tagihan)}</Td>
+                        <Td isNumeric fontWeight="extrabold" color="red.600">{formatRupiah(item.total_bayar)}</Td>
+                        
+                        <Td textAlign="center">
+                          <Badge 
+                            as="button"
+                            onClick={() => window.open(`http://127.0.0.1:8000${item.bukti_transfer}`, "_blank")}
+                            colorScheme="orange" variant="outline" px={3} py={1} borderRadius="full" cursor="pointer"
+                          >
+                            VIEW FILE
+                          </Badge>
+                        </Td>
+                        <Td textAlign="center">
+                          <Badge colorScheme={style.colorScheme} px={3} py={1} borderRadius="full">
+                            {style.label}
+                          </Badge>
+                        </Td>
+                        <Td textAlign="center">
+                          {item.status === 'MENUNGGU' && (
+                            <Button colorScheme="blue" size="sm" onClick={() => handleOpenValidasi(item)} boxShadow="sm">
+                              Validasi
+                            </Button>
+                          )}
+                        </Td>
+                      </Tr>
+                    );
+                  })
+                )}
+              </Tbody>
             </Table>
           </TableContainer>
-
-          {/* Info Footer */}
-          <Box
-            sx={{
-              mt: 2,
-              p: 2,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Typography variant="body2" sx={{ color: "#666" }}>
-              Menampilkan <strong>{filteredData.length}</strong> dari <strong>{transferData.length}</strong> data transfer
-            </Typography>
-          </Box>
         </Box>
-      </div>
-    </div>
+      </Box>
+
+      {/* MODAL CHAKRA UI */}
+      <ModalValidasiTransfer 
+        open={openModal} 
+        onClose={() => { 
+          setOpenModal(false); 
+          fetchTransferData(); // Otomatis refresh tabel kalau modal ditutup (habis validasi)
+        }} 
+        data={selectedItem} 
+      />
+    </Flex>
   );
 };
 

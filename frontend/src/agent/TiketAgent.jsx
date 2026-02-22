@@ -8,55 +8,22 @@ import Agent_Navbar from './layout/Agent_Navbar';
 import SeatGridInline28 from "./kursi/SeatGridInline28";
 import SeatGridSleeper from "./kursi/SeatGridSleeper";
 
-// API base — sesuaikan bila backend path berbeda
 const API = "http://127.0.0.1:8000/api/accounts";
 
-const pickDestination = (trip) =>
-  trip.destination ||
-  trip.arrival_destination ||
-  trip.arrivalDestination ||
-  trip.arrival_destination_name ||
-  trip.arrivalDestinationName ||
-  "";
-
-/**
- * Helper: parse harga dari berbagai format string/number
- * - Menghapus non-digit dan mengembalikan Number
- */
-const parsePriceNumber = (priceStr) => {
-  if (priceStr === null || priceStr === undefined) return 0;
-  const cleaned = String(priceStr).replace(/[^\d.]/g, ""); // keep dot
-  // Remove extra dots (e.g. "1.234.567.00") => keep the first dot as decimal separator
-  const parts = cleaned.split(".");
-  let normalized;
-  if (parts.length <= 2) {
-    normalized = cleaned;
-  } else {
-    // join all but last as integer, keep last as fractional (handle thousands dots)
-    const frac = parts.pop();
-    normalized = parts.join("") + "." + frac;
-  }
-  const num = parseFloat(normalized);
-  return Number.isFinite(num) ? num : 0;
-};
-/**
- * priceForTrip:
- * - Jika backend mengirim angka kecil (mis. 200) kita anggap itu 200k => dikali 1000
- * - Jika backend mengirim 200000 maka gunakan langsung
- */
-const priceForTrip = (t) => {
-  const raw = parsePriceNumber(t?.price ?? 0);
-  if (!raw) return 0;
-  // jika backend mengirim 200 (maks 3 digit), anggap format 'k' (200 => 200k)
-  return raw < 1000 ? Math.round(raw * 1000) : Math.round(raw);
-};
-
 const TripCard = ({ trip, onToggleOpen }) => {
-  const busName = trip.bus ? trip.bus.name : trip.title || "-";
-  const busCode = trip.bus?.code || "";
+  // Parsing Tanggal & Jam dari Backend
+  const dateObj = new Date(trip.waktu_keberangkatan);
+  const dateStr = dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  const timeStr = dateObj.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 
-  const availableSeats = Math.max(0, (trip.capacity ?? 0) - (trip.sold_seats ?? 0));
-  const occupancyRate = Math.min(100, Math.round(((trip.sold_seats ?? 0) / (trip.capacity || 1)) * 100));
+  const busName = trip.bus_name || "-";
+  const busCode = trip.bus_type || "";
+
+  // 🔥 PERUBAHAN DI SINI: Baca kapasitas dan terjual langsung dari Backend
+  const capacity = trip.kapasitas || 28; 
+  const soldSeats = trip.terjual || 0; 
+  const availableSeats = Math.max(0, capacity - soldSeats);
+  const occupancyRate = Math.min(100, Math.round((soldSeats / capacity) * 100));
 
   return (
     <div
@@ -68,37 +35,39 @@ const TripCard = ({ trip, onToggleOpen }) => {
           <img src={LogoSK1} alt="logo" className="w-12 h-12 object-contain" />
           <div>
             <h3 className="font-bold text-gray-900 text-sm md:text-base">{busName}</h3>
-            {busCode && <p className="text-sm text-black-900 mt-0.5 font-semibold">{busCode}</p>}
+            {busCode && <p className="text-sm text-blue-600 mt-0.5 font-semibold">{busCode}</p>}
           </div>
         </div>
 
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase">Keberangkatan</h4>
-            <p className="text-sm font-semibold text-gray-900">{trip.time?.slice(0, 5)}</p>
-            <p className="text-xs text-gray-600 line-clamp-2">{trip.origin}</p>
-            <p className="text-xs text-gray-500">{trip.date}</p>
+            <p className="text-sm font-semibold text-gray-900">{timeStr}</p>
+            <p className="text-xs text-gray-600 line-clamp-2">{trip.asal}</p>
+            <p className="text-xs text-gray-500">{dateStr}</p>
           </div>
 
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase">Kedatangan</h4>
-            <p className="text-sm font-semibold text-gray-900 line-clamp-2">{pickDestination(trip)}</p>
+            <p className="text-sm font-semibold text-gray-900 line-clamp-2">{trip.tujuan}</p>
           </div>
 
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase">Harga</h4>
             <p className="text-base font-bold text-blue-600">
-               Rp {priceForTrip(trip).toLocaleString("id-ID")}
+               Rp {Number(trip.harga || 0).toLocaleString("id-ID")}
             </p>
           </div>
         </div>
 
         <div className="flex flex-col items-center gap-2 min-w-[100px]">
           <div className="text-center">
+            {/* 🔥 Angka ini akan otomatis berkurang kalau ada yang booking */}
             <p className="text-sm font-bold text-gray-900">{availableSeats}</p>
             <p className="text-xs text-gray-500">Kursi Tersedia</p>
           </div>
 
+          {/* 🔥 Progress bar ini juga akan otomatis maju sesuai tiket terjual */}
           <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
@@ -122,39 +91,40 @@ const TripCard = ({ trip, onToggleOpen }) => {
 
 const TiketAgent = () => {
   const [filters, setFilters] = useState({ origin: "", destination: "", date: "" });
-  const [bookingLoading, setBookingLoading] = useState(false);
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [openTripId, setOpenTripId] = useState(null);
 
-  const [seatsMap, setSeatsMap] = useState({}); // { tripId: seatsArray | { lantaiAtas:[], lantaiBawah:[] } }
-  const [selectedSeatsMap, setSelectedSeatsMap] = useState({}); // { tripId: [ids] }
+  const [seatsMap, setSeatsMap] = useState({});
+  const [selectedSeatsMap, setSelectedSeatsMap] = useState({});
 
   useEffect(() => { loadAll(); }, []);
 
+  // 🔥 1. UBAH KE ENDPOINT SEARCH BARU
   const loadAll = async () => {
-  try {
-    setLoading(true);
-    const res = await fetch(`${API}/jadwal/`, { credentials: "include" });
-    const data = await res.json();
-    setTrips(Array.isArray(data) ? data : []);
-  } catch (e) {
-    setErr("Gagal memuat jadwal");
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      const res = await fetch(`${API}/schedule/search/`, { credentials: "include" });
+      const data = await res.json();
+      setTrips(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setErr("Gagal memuat jadwal");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-
+  // 🔥 2. UBAH PARAMETER PENCARIAN (asal, tujuan, tanggal)
   const search = async () => {
     try {
       setErr(""); setLoading(true);
       const params = new URLSearchParams();
-      if (filters.origin) params.append("origin", filters.origin);
-      if (filters.destination) params.append("destination", filters.destination);
-      if (filters.date) params.append("date", filters.date);
-      const res = await fetch(`${API}/jadwal/search/?${params.toString()}`, { credentials: "include" });
+      if (filters.origin) params.append("asal", filters.origin);
+      if (filters.destination) params.append("tujuan", filters.destination);
+      if (filters.date) params.append("tanggal", filters.date);
+      
+      const res = await fetch(`${API}/schedule/search/?${params.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setTrips(Array.isArray(data) ? data : []);
@@ -166,7 +136,6 @@ const TiketAgent = () => {
     }
   };
 
-  // Fetch seats and normalize; detect sleeper payload regardless of trip.bus flag
   const fetchAndStoreSeats = async (tripId) => {
     try {
       const res = await fetch(`${API}/jadwal/${tripId}/seats/`, { credentials: "include" });
@@ -189,22 +158,11 @@ const TiketAgent = () => {
       if (looksLikeSleeper) {
         const atasRaw = data.lantai_atas || data.lantaiAtas || [];
         const bawahRaw = data.lantai_bawah || data.lantaiBawah || [];
-        const atas = Array.isArray(atasRaw) ? atasRaw.map(normalize) : [];
-        const bawah = Array.isArray(bawahRaw) ? bawahRaw.map(normalize) : [];
-        setSeatsMap(prev => ({ ...prev, [tripId]: { lantaiAtas: atas, lantaiBawah: bawah } }));
-        setSelectedSeatsMap(prev => ({ ...prev, [tripId]: [] }));
-        return;
+        setSeatsMap(prev => ({ ...prev, [tripId]: { lantaiAtas: atasRaw.map(normalize), lantaiBawah: bawahRaw.map(normalize) } }));
+      } else {
+        const arr = Array.isArray(data) ? data.map(normalize) : [];
+        setSeatsMap(prev => ({ ...prev, [tripId]: arr }));
       }
-
-      // inline expected array
-      if (!Array.isArray(data)) {
-        setSeatsMap(prev => ({ ...prev, [tripId]: [] }));
-        setSelectedSeatsMap(prev => ({ ...prev, [tripId]: [] }));
-        return;
-      }
-
-      const arr = data.map(normalize);
-      setSeatsMap(prev => ({ ...prev, [tripId]: arr }));
       setSelectedSeatsMap(prev => ({ ...prev, [tripId]: [] }));
     } catch (e) {
       console.error("fetch seats error", e);
@@ -214,24 +172,13 @@ const TiketAgent = () => {
   };
 
   const toggleOpen = async (tripId) => {
-  if (openTripId === tripId) { setOpenTripId(null); return; }
-  setOpenTripId(tripId);
-  if (!seatsMap[tripId]) await fetchAndStoreSeats(tripId);
-
-  const trip = trips.find(t => t.id === tripId);
-    console.log("DEBUG openTrip:", tripId, { rawPrice: trip?.price, parsedPrice: priceForTrip(trip), destinationCandidates: {
-      destination: trip?.destination,
-      arrival_destination: trip?.arrival_destination,
-      arrivalDestination: trip?.arrivalDestination
-    }});
-
+    if (openTripId === tripId) { setOpenTripId(null); return; }
+    setOpenTripId(tripId);
+    if (!seatsMap[tripId]) await fetchAndStoreSeats(tripId);
     setTimeout(() => { const el = document.getElementById(`seat-panel-${tripId}`); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 80);
   };
 
-
-  // Toggle seat with duplicate protection (Set)
   const toggleSeat = (tripId, seatId) => {
-    // update seatsMap selected flag
     setSeatsMap(prev => {
       const copy = { ...prev };
       const cur = copy[tripId];
@@ -247,11 +194,9 @@ const TiketAgent = () => {
         copy[tripId] = cur.map(s => s.id === seatId ? { ...s, selected: !s.selected } : s);
         return copy;
       }
-
       return prev;
     });
 
-    // update selectedSeatsMap using Set to avoid duplicates
     setSelectedSeatsMap(prev => {
       const prevArr = Array.isArray(prev[tripId]) ? prev[tripId] : [];
       const set = new Set(prevArr);
@@ -261,101 +206,85 @@ const TiketAgent = () => {
     });
   };
 
-  const handleProceed = (trip) => {
-    const seats = selectedSeatsMap[trip.id] || [];
-    if (!seats.length) return alert('Silakan pilih kursi terlebih dahulu');
-    localStorage.setItem("agent_selected_seats", JSON.stringify({ tripId: trip.id, seats }));
-    alert(`Lanjut ke pembayaran.\nJadwal #${trip.id}\nKursi: ${seats.join(', ')}\nTotal: Rp ${(seats.length * Number(trip.price || 0)).toLocaleString('id-ID')}`);
-  };
-
+  // 🔥 3. MAPPING PAYLOAD BOOKING AGENT
   const submitAgentBooking = async (trip) => {
-  try {
-    const seats = selectedSeatsMap[trip.id] || [];
-    if (!seats.length) {
-      alert("Pilih kursi terlebih dahulu");
+    try {
+      const seats = selectedSeatsMap[trip.id] || [];
+      if (!seats.length) {
+        alert("Pilih kursi terlebih dahulu");
+        return false;
+      }
+
+      // Mapping data penumpang dari React ke format Backend (Django)
+      const mappedPassengers = passengerData.map(p => ({
+        nama: p.name,
+        ktp: p.no_ktp,
+        hp: p.phone,
+        jk: p.gender === "Perempuan" ? "P" : "L"
+      }));
+
+      const payload = {
+        jadwal_id: trip.id,
+        seats: seats,
+        passengers: mappedPassengers
+      };
+
+      const res = await fetch(`${API}/booking/agent/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", 
+        body: JSON.stringify(payload),
+      });
+
+      if (res.status === 401) {
+        alert("Sesi login habis, silakan login ulang.");
+        return false;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || JSON.stringify(data) || "Gagal booking");
+        return false;
+      }
+
+      setIssuedTickets(data.kode_booking || []);
+      return true;
+
+    } catch (err) {
+      console.error("Detail Error:", err);
+      alert("Koneksi bermasalah");
       return false;
     }
-
-    // Gunakan fetch dengan credentials: "include" 
-    // HAPUS header Authorization karena kita menggunakan Session
-    const res = await fetch(`${API}/agent/bookings/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // "Authorization": ... <--- HAPUS BARIS INI
-      },
-      credentials: "include", // WAJIB: Agar Cookie Session & CSRF terkirim
-      body: JSON.stringify({
-        schedule_id: trip.id,
-        seats,
-        passengers: passengerData,
-      }),
-    });
-
-    // Jika masih 401 setelah pakai credentials, berarti session expired
-    if (res.status === 401) {
-      alert("Sesi login habis, silakan login ulang.");
-      return false;
-    }
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error || "Gagal booking");
-      return false;
-    }
-
-    setIssuedTickets(data.tickets || []);
-    return true;
-
-  } catch (err) {
-    console.error("Detail Error:", err);
-    alert("Koneksi bermasalah");
-    return false;
-  }
-};
+  };
 
   const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
   const handleConfirmBooking = async () => {
     if (!activeTrip) return;
-
-    // ✅ TUTUP POPUP KONFIRMASI DULU
     setShowConfirmPopup(false);
-
-    // ✅ BARU TAMPILKAN LOADING
     setShowLoadingPopup(true);
-
-    await delay(1000); // 1 detik
-
+    
+    await delay(1000); 
     const ok = await submitAgentBooking(activeTrip);
-
+    
     setShowLoadingPopup(false);
-
     if (!ok) {
-      // kalau gagal, balikin popup konfirmasi
       setShowConfirmPopup(true);
       return;
     }
-
     setShowSuccessPopup(true);
   };
-
-
-
 
   const [showPassengerPopup, setShowPassengerPopup] = useState(false);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showLoadingPopup, setShowLoadingPopup] = useState(false);
 
-  // data sementara
   const [activeTrip, setActiveTrip] = useState(null);
   const [issuedTickets, setIssuedTickets] = useState([]);
-
   const [passengerData, setPassengerData] = useState([]);
 
-  //perubahan data penumpang
   const handlePassengerChange = (index, e) => {
     const { name, value } = e.target;
     const updatedPassengerData = [...passengerData];
@@ -363,32 +292,16 @@ const TiketAgent = () => {
     setPassengerData(updatedPassengerData);
   };
 
-  const handleAddPassenger = () => {
-    setPassengerData([
-      ...passengerData,
-      {
-        name : '',
-        no_ktp : '',
-        gender : '',
-        phone : '',
-
-      }
-    ]);
-  };
-
-
   const renderSeatGrid = (t) => {
     const data = seatsMap[t.id];
     if (data === undefined) return <div>Memuat kursi...</div>;
 
-    // sleeper
     if (data && !Array.isArray(data) && (data.lantaiAtas || data.lantaiBawah)) {
       return <SeatGridSleeper seats={data} onToggleSeat={(sid) => toggleSeat(t.id, sid)} />;
     }
 
-    // inline
     const arr = Array.isArray(data) ? data : [];
-    const totalSeats = arr.length || t.capacity || 28;
+    const totalSeats = arr.length || 28;
     if (totalSeats <= 22) return <SeatGridSleeper seats={arr} onToggleSeat={(sid) => toggleSeat(t.id, sid)} />;
     return <SeatGridInline28 seats={arr} onToggleSeat={(sid) => toggleSeat(t.id, sid)} />;
   };
@@ -404,39 +317,27 @@ const TiketAgent = () => {
         {showPassengerPopup && activeTrip && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-2xl">
               <h2 className="text-2xl font-extrabold text-white">Data Penumpang</h2>
-              <p className="text-blue-100 text-sm mt-1">
-                Lengkapi informasi penumpang sesuai kursi
-              </p>
+              <p className="text-blue-100 text-sm mt-1">Lengkapi informasi penumpang sesuai kursi</p>
             </div>
 
             <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
               {selectedSeatsMap[activeTrip.id]?.map((seat, index) => (
                 <div key={index} className="border rounded-xl p-4 space-y-3">
-                  <h4 className="font-semibold text-gray-700">
-                    Penumpang {index + 1} (Kursi {seat})
-                  </h4>
-
+                  <h4 className="font-semibold text-gray-700">Penumpang {index + 1} (Kursi {seat})</h4>
                   <input
-                    type="text"
-                    name="name"
-                    placeholder="Nama Lengkap"
+                    type="text" name="name" placeholder="Nama Lengkap"
                     className="w-full px-4 py-3 bg-gray-50 border rounded-xl"
                     value={passengerData[index]?.name || ""}
                     onChange={(e) => handlePassengerChange(index, e)}
                   />
-
                   <input
-                    type="text"
-                    name="no_ktp"
-                    placeholder="No. KTP"
+                    type="text" name="no_ktp" placeholder="No. KTP"
                     className="w-full px-4 py-3 bg-gray-50 border rounded-xl"
                     value={passengerData[index]?.no_ktp || ""}
                     onChange={(e) => handlePassengerChange(index, e)}
                   />
-
                   <select
                     name="gender"
                     className="w-full px-4 py-3 bg-gray-50 border rounded-xl"
@@ -447,11 +348,8 @@ const TiketAgent = () => {
                     <option value="Laki-laki">Laki-laki</option>
                     <option value="Perempuan">Perempuan</option>
                   </select>
-
                   <input
-                    type="tel"
-                    name="phone"
-                    placeholder="No. HP"
+                    type="tel" name="phone" placeholder="No. HP"
                     className="w-full px-4 py-3 bg-gray-50 border rounded-xl"
                     value={passengerData[index]?.phone || ""}
                     onChange={(e) => handlePassengerChange(index, e)}
@@ -461,25 +359,18 @@ const TiketAgent = () => {
             </div>
 
             <div className="px-6 pb-6 flex gap-3">
-              <button
-                onClick={() => setShowPassengerPopup(false)}
-                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold"
-              >
+              <button onClick={() => setShowPassengerPopup(false)} className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold">
                 Batal
               </button>
-
               <button
                 onClick={() => {
                   if (
                     passengerData.length !== (selectedSeatsMap[activeTrip.id]?.length || 0) ||
-                    passengerData.some(
-                      p => !p?.name || !p?.no_ktp || !p?.gender || !p?.phone
-                    )
+                    passengerData.some(p => !p?.name || !p?.no_ktp || !p?.gender || !p?.phone)
                   ) {
                     alert("Mohon lengkapi semua data penumpang");
                     return;
                   }
-
                   setShowPassengerPopup(false);
                   setShowConfirmPopup(true);
                 }}
@@ -492,7 +383,6 @@ const TiketAgent = () => {
         </div>
       )}
 
-
         {/* ===== POPUP 2: KONFIRMASI ===== */}
         {showConfirmPopup && activeTrip && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -503,42 +393,37 @@ const TiketAgent = () => {
               </div>
 
               <div className="p-6 space-y-6">
-                {/* DETAIL PERJALANAN */}
                 <div className="bg-blue-50 rounded-xl p-5 space-y-3">
                   <h3 className="font-bold text-gray-900 text-lg mb-3">Detail Perjalanan</h3>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <p className="text-gray-600 font-medium">Bis</p>
-                      <p className="font-bold text-gray-900">{activeTrip.bus?.name}</p>
+                      <p className="font-bold text-gray-900">{activeTrip.bus_name}</p>
                     </div>
                     <div>
                       <p className="text-gray-600 font-medium">Jam</p>
-                      <p className="font-bold text-gray-900">{activeTrip.time?.slice(0, 5)}</p>
+                      <p className="font-bold text-gray-900">{new Date(activeTrip.waktu_keberangkatan).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</p>
                     </div>
                     <div>
                       <p className="text-gray-600 font-medium">Keberangkatan</p>
-                      <p className="font-bold text-gray-900">{activeTrip.origin}</p>
+                      <p className="font-bold text-gray-900">{activeTrip.asal}</p>
                     </div>
                     <div>
                       <p className="text-gray-600 font-medium">Kedatangan</p>
-                      <p className="font-bold text-gray-900">{pickDestination(activeTrip)}</p>
+                      <p className="font-bold text-gray-900">{activeTrip.tujuan}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="border-t-2 border-dashed border-gray-300"></div>
 
-                {/* DATA PENUMPANG (UPDATED – MULTI) */}
                 <div className="bg-purple-50 rounded-xl p-5">
                   <h3 className="font-bold text-gray-900 text-lg mb-3">Data Penumpang</h3>
-
                   <div className="space-y-2">
                     {passengerData.map((p, index) => (
                       <div key={index} className="flex items-center justify-between">
                         <div>
-                          <p className="text-xl font-extrabold text-gray-900">
-                            {p.name}
-                          </p>
+                          <p className="text-xl font-extrabold text-gray-900">{p.name}</p>
                           <p className="text-sm text-gray-600 mt-1">
                             Kursi: {selectedSeatsMap[activeTrip.id]?.[index]}
                           </p>
@@ -548,44 +433,34 @@ const TiketAgent = () => {
                   </div>
                 </div>
 
-                {/* TOTAL */}
                 <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-5 border-2 border-green-200">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600 font-medium">Total Pembayaran</p>
                       <p className="text-xs text-gray-500 mt-1">
                         {selectedSeatsMap[activeTrip.id]?.length || 0} kursi × Rp{" "}
-                        {priceForTrip(activeTrip).toLocaleString("id-ID")}
+                        {Number(activeTrip.harga || 0).toLocaleString("id-ID")}
                       </p>
                     </div>
                     <p className="text-3xl font-extrabold text-green-600">
                       Rp{" "}
-                      {(
-                        (selectedSeatsMap[activeTrip.id]?.length || 0) *
-                        priceForTrip(activeTrip)
-                      ).toLocaleString("id-ID")}
+                      {((selectedSeatsMap[activeTrip.id]?.length || 0) * Number(activeTrip.harga || 0)).toLocaleString("id-ID")}
                     </p>
                   </div>
                 </div>
-
                 <p className="text-xs text-gray-500 text-center italic">
                   Klik konfirmasi jika sudah menerima pembayaran
                 </p>
               </div>
 
               <div className="px-6 pb-6 flex gap-3">
-                <button
-                  onClick={() => setShowConfirmPopup(false)}
-                  className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
-                >
+                <button onClick={() => setShowConfirmPopup(false)} className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all">
                   Batal
                 </button>
                 <button
                   onClick={handleConfirmBooking}
                   disabled={showLoadingPopup}
-                  className={`px-4 py-2 rounded ${
-                    showLoadingPopup ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  className={`flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition-all shadow-lg ${showLoadingPopup ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {showLoadingPopup ? "Memproses..." : "Konfirmasi & Terbitkan Tiket"}
                 </button>
@@ -593,7 +468,6 @@ const TiketAgent = () => {
             </div>
           </div>
         )}
-
 
         {/* ===== POPUP 3: LOADING ===== */}
         {showLoadingPopup && (
@@ -604,7 +478,7 @@ const TiketAgent = () => {
                 <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">Memproses Pemesanan...</h3>
-              <p className="text-gray-600 text-sm">Mohon tunggu sebentar</p>
+              <p className="text-gray-600 text-sm">Mohon tunggu sebentar, sedang menghitung komisi</p>
             </div>
           </div>
         )}
@@ -623,7 +497,7 @@ const TiketAgent = () => {
 
               <div className="px-8 pb-8 text-center">
                 <h3 className="text-2xl font-extrabold text-gray-900 mb-3">Pemesanan Tiket Berhasil!</h3>
-                <p className="text-gray-600 mb-6">Tiket telah berhasil diterbitkan dan siap untuk dicetak</p>
+                <p className="text-gray-600 mb-6">Tiket telah diterbitkan dan komisi telah dicatat ke akun Anda.</p>
 
                 <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
                   <p className="text-sm text-gray-700">
@@ -637,7 +511,7 @@ const TiketAgent = () => {
                   <button
                     onClick={() => {
                       setShowSuccessPopup(false);
-                      // navigate('/agent/tiket-terbit');
+                      // navigate('/agent/tiket-terbit'); // Bisa di-uncomment nanti
                     }}
                     className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg"
                   >
@@ -647,8 +521,9 @@ const TiketAgent = () => {
                   <button
                     onClick={() => {
                       setShowSuccessPopup(false);
-                      setPassengerData({ name: "", no_ktp: "", phone: "", gender: "" });
+                      setPassengerData([]); // Reset data penumpang
                       setOpenTripId(null);
+                      setSelectedSeatsMap({}); // Reset kursi
                     }}
                     className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
                   >
@@ -660,7 +535,8 @@ const TiketAgent = () => {
           </div>
         )}
 
-        <div className="max-w-6xl mx-auto px-4 py-10">
+        {/* UTAMA */}
+        <div className="max-w-6xl mx-auto px-4 py-10 w-full">
           <h2 className="text-2xl font-semibold mb-6">Pencarian Jadwal Tiket Agen</h2>
 
           <div className="bg-white shadow-lg rounded-lg p-6 md:p-8 flex flex-col md:flex-row gap-6">
@@ -699,56 +575,63 @@ const TiketAgent = () => {
                     <TripCard trip={t} onToggleOpen={toggleOpen} />
 
                     {openTripId === t.id && (
-                      <div id={`seat-panel-${t.id}`} className="mt-4 bg-gray-50 p-6 rounded-lg border">
-                        <div className="bg-blue-800 text-white px-3 py-2 rounded mb-4">Klik pilihan kursi yang tersedia kemudian lanjut ke bagian pembayaran</div>
+                      <div id={`seat-panel-${t.id}`} className="mt-4 bg-gray-50 p-6 rounded-lg border shadow-inner">
+                        <div className="bg-blue-800 text-white px-3 py-2 rounded mb-4 shadow-sm text-sm">Klik pilihan kursi yang tersedia kemudian lanjut ke bagian pembayaran</div>
                         <div className="flex flex-col md:flex-row gap-6">
-                          <div className="flex-1">
+                          
+                          <div className="flex-1 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                             { renderSeatGrid(t) }
                           </div>
 
                           <div className="w-full md:w-64">
-                            <div className="bg-white p-4 rounded-md shadow-md space-y-4">
-                              <h4 className="font-semibold text-sm text-gray-800">Keberangkatan</h4>
+                            <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200 space-y-4 sticky top-4">
+                              <h4 className="font-bold text-sm text-gray-800 uppercase tracking-wider text-center border-b pb-2">Rincian Tiket</h4>
+                              
                               <div className="space-y-2">
-                                <div className="flex justify-between text-sm text-gray-600">
-                                  <span className="font-medium text-gray-800">{t.origin}</span>
-                                  <span className="text-gray-700">{t.time?.slice(0,5)}</span>
+                                <div className="text-xs text-gray-500 font-semibold uppercase">Rute</div>
+                                <div className="flex justify-between text-sm text-gray-800 font-medium bg-gray-50 p-2 rounded">
+                                  <span>{t.asal}</span>
+                                  <FaArrowRight className="text-gray-400 mt-1 mx-1"/>
+                                  <span>{t.tujuan}</span>
                                 </div>
                               </div>
 
-                              <div className="space-y-2">
-                                <h4 className="font-semibold text-sm text-gray-800">Kedatangan</h4>
-                                <div className="flex justify-between text-sm text-gray-600"><span className="font-medium text-gray-800">{t.destination}</span><span className="text-gray-700"></span></div>
-                              </div>
-
                               <div>
-                                <div className="text-sm font-medium text-gray-600">Nomor Tempat Duduk</div>
-                                <div className="text-xl font-bold text-gray-800">{(selectedSeatsMap[t.id] || []).join(", ") || "-"}</div>
-                              </div>
-
-                              <div className="border-t border-gray-300 my-4"></div>
-
-                              <div>
-                                <div className="text-sm font-medium text-gray-600">Detail Harga</div>
-                                <div className="text-lg font-bold text-gray-800">
-                                  Rp { ((selectedSeatsMap[t.id]?.length || 0) * priceForTrip(t)).toLocaleString('id-ID') }
+                                <div className="text-xs text-gray-500 font-semibold uppercase mb-1">Kursi Dipilih</div>
+                                <div className="text-lg font-bold text-blue-600 bg-blue-50 p-2 rounded text-center">
+                                  {(selectedSeatsMap[t.id] || []).join(", ") || "Belum dipilih"}
                                 </div>
                               </div>
 
-                              <div className="pt-4 flex gap-2">
-                                <button onClick={() => setOpenTripId(null)} className="flex-1 border border-gray-300 py-1.5 rounded-md text-xs hover:bg-gray-50 transition">Tutup</button>
+                              <div>
+                                <div className="text-xs text-gray-500 font-semibold uppercase mb-1">Total Bayar</div>
+                                <div className="text-xl font-black text-green-600 bg-green-50 p-2 rounded text-center">
+                                  Rp { ((selectedSeatsMap[t.id]?.length || 0) * Number(t.harga || 0)).toLocaleString('id-ID') }
+                                </div>
+                              </div>
+
+                              <div className="pt-2">
                                 <button
                                   onClick={() => {
                                     if (!(selectedSeatsMap[t.id] || []).length) {
                                       alert("Silakan pilih kursi terlebih dahulu");
                                       return;
                                     }
+                                    
+                                    // Set data penumpang kosong sesuai jumlah kursi
+                                    const seatCount = selectedSeatsMap[t.id].length;
+                                    const initialPassengers = Array(seatCount).fill({ name: "", no_ktp: "", phone: "", gender: "" });
+                                    setPassengerData(initialPassengers);
+
                                     setActiveTrip(t);
                                     setShowPassengerPopup(true);
                                   }}
-                                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-md text-xs transition"
+                                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition-all transform hover:scale-105"
                                 >
-                                  Konfirmasi & Terbitkan Tiket
+                                  Proses Tiket
+                                </button>
+                                <button onClick={() => setOpenTripId(null)} className="w-full mt-2 text-gray-500 text-xs hover:text-gray-800 transition underline">
+                                  Tutup Panel Kursi
                                 </button>
                               </div>
                             </div>
@@ -761,7 +644,11 @@ const TiketAgent = () => {
                 ))}
 
                 {!loading && trips.length === 0 && (
-                  <div className="p-4 text-center text-gray-500 bg-white rounded">Jadwal untuk destinasi ini belum tersedia.</div>
+                  <div className="p-10 text-center text-gray-500 bg-white border-2 border-dashed border-gray-300 rounded-xl">
+                    <FaBus className="mx-auto text-4xl mb-3 text-gray-300"/>
+                    <p className="font-semibold text-lg">Jadwal Bus Tidak Ditemukan</p>
+                    <p className="text-sm mt-1">Coba cari dengan rute atau tanggal yang berbeda.</p>
+                  </div>
                 )}
               </div>
 

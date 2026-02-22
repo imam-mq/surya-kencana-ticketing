@@ -20,38 +20,40 @@ const TambahPromo = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/api/accounts/admin/promo/", {
+        // Mapping field sesuai dengan Model Django (Bahasa Indonesia)
+        const payload = {
+            nama: promo.judul,                     // title -> nama
+            deskripsi: promo.deskripsi,            // 🔥 TAMBAHKAN BARIS INI DI SINI
+            persen_diskon: Number(promo.diskon),   // discount_percent -> persen_diskon
+            tanggal_mulai: promo.tanggal,          // start_date -> tanggal_mulai
+            tanggal_selesai: promo.tanggal,        // Karena di form cuma ada 1 input tanggal
+            status: promo.status === "Aktif" ? "active" : "inactive"
+        };
+
+        const response = await fetch("http://127.0.0.1:8000/api/accounts/admin/promo/", {
             method: "POST",
             credentials: "include",
             headers: {
-                "Content-Type": "application/json",
+            "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                title: promo.judul,
-                description: promo.deskripsi,
-                discount_percent: promo.diskon,
-                periode: promo.periode,
-                start_date: promo.tanggal,
-                end_date: promo.tanggal,   // Jika cuma ada satu tanggal
-                active: promo.status === "Aktif"
-            }),
-            });
+            body: JSON.stringify(payload), // Gunakan payload yang sudah di-mapping
+        });
 
-            const result = await response.json();
+        const result = await response.json();
 
-            if (response.ok) {
+        if (response.ok) {
             alert("Promo berhasil ditambahkan");
             window.location.href = "/admin/manajemenpromo";  // Redirect
-            } else {
-            alert(result.message || "Gagal menambahkan promo");
-            }
+        } else {
+            alert(result.message || JSON.stringify(result) || "Gagal menambahkan promo");
+        }
         } catch (error) {
-            console.error("Error:", error);
-            alert("Terjadi kesalahan saat menghubungkan backend");
+        console.error("Error:", error);
+        alert("Terjadi kesalahan saat menghubungkan backend");
         }
     };
 

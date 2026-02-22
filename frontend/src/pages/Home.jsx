@@ -130,25 +130,36 @@ export default function Home() {
               promos.map((promo, i) => (
                 <div
                   key={i}
-                  className="bg-blue-900 text-white rounded-xl shadow-lg p-6 border border-blue-400/60 hover:scale-105 transition-transform duration-300"
+                  className="bg-blue-900 text-white rounded-xl shadow-lg p-6 border border-blue-400/60 hover:scale-105 transition-transform duration-300 flex flex-col justify-between"
                   data-aos="fade-up"
                 >
-                  <h3 className="text-lg sm:text-base md:text-lg font-semibold mb-1">{promo.title}</h3>
-                  <p className="text-sm sm:text-xs md:text-sm text-gray-200 mb-4">
-                    {promo.description || "Dapatkan diskon khusus bulan ini!"}
-                  </p>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="bg-blue-1000 border border-white/50 rounded-lg px-4 py-3 text-center flex flex-col items-center w-[110px]">
+                  <div>
+                    {/* 1. UBAH title menjadi nama */}
+                    <h3 className="text-lg sm:text-base md:text-lg font-semibold mb-1 truncate" title={promo.nama}>
+                      {promo.nama}
+                    </h3>
+                    
+                    {/* 2. UBAH deskripsi statis menjadi promo.deskripsi dari database */}
+                    <p className="text-sm sm:text-xs md:text-sm text-gray-200 mb-4 line-clamp-2" title={promo.deskripsi}>
+                      {promo.deskripsi || "Dapatkan diskon khusus untuk perjalanan Anda!"}
+                    </p>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4 mt-auto">
+                    <div className="bg-blue-1000 border border-white/50 rounded-lg px-4 py-3 text-center flex flex-col items-center w-[110px] shrink-0">
                       <p className="text-[10px] sm:text-[11px] bg-blue-500 text-white font-semibold rounded-md px-2 py-0.5 mb-1">
                         Potongan
                       </p>
                       <p className="text-[12px] font-medium">Hingga</p>
-                      <p className="text-xl font-extrabold leading-tight">{promo.discount_percent}%</p>
+                      
+                      {/* 3. UBAH discount_percent menjadi persen_diskon */}
+                      <p className="text-xl font-extrabold leading-tight">{promo.persen_diskon}%</p>
                     </div>
 
-                    <div className="flex-1">
-                      <p className="text-sm sm:text-xs md:text-sm mb-2">
-                        {promo.periode ? promo.periode : `${promo.start_date} - ${promo.end_date}`}
+                    <div className="flex-1 min-w-0">
+                      {/* 4. UBAH periode/tanggal menjadi tanggal_mulai s/d tanggal_selesai */}
+                      <p className="text-sm sm:text-xs md:text-sm mb-2 truncate">
+                        {promo.tanggal_mulai} s/d {promo.tanggal_selesai}
                       </p>
                       <div className="flex items-center bg-blue-800 rounded-md px-3 py-2 border border-blue-500 overflow-hidden">
                         <input
@@ -159,14 +170,16 @@ export default function Home() {
                         />
                       </div>
                       <span className="text-[10px] bg-yellow-400 text-blue-900 font-semibold rounded-sm px-2 py-0.5 inline-block mt-2">
-                        Aktif
+                        {promo.status === 'active' ? 'Aktif' : 'Non-Aktif'}
                       </span>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center text-lg font-semibold text-gray-500">Tidak ada promo aktif saat ini</div>
+              <div className="col-span-1 sm:col-span-2 md:col-span-3 text-center text-lg font-semibold text-gray-500">
+                Tidak ada promo aktif saat ini
+              </div>
             )}
           </div>
         </section>

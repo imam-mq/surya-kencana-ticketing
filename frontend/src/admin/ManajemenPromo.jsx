@@ -7,13 +7,13 @@ import { Link, useNavigate } from "react-router-dom";
 const ManajemenPromo = () => {
   const [promos, setPromos] = useState([]);
   const [search, setSearch] = useState("");
-  const [selectedPromoId, setSelectedPromoId] = useState(null); // Track the selected promo for deletion
-  const [showDeleteModal, setShowDeleteModal] = useState(false); // Show or hide the delete confirmation modal
+  const [selectedPromoId, setSelectedPromoId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const navigate = useNavigate();
 
   // ✅ Fetch promo dari backend
   const fetchPromos = async () => {
-  try {
+    try {
       const response = await fetch(
         "http://127.0.0.1:8000/api/accounts/admin/promo/",
         { credentials: "include" }
@@ -33,7 +33,6 @@ const ManajemenPromo = () => {
     }
   };
 
-
   useEffect(() => {
     fetchPromos();
   }, []);
@@ -41,18 +40,18 @@ const ManajemenPromo = () => {
   // ✅ Delete ke backend
   const handleDelete = async () => {
     if (!selectedPromoId) return;
-    
+
     try {
       const response = await fetch(
         `http://127.0.0.1:8000/api/accounts/admin/promo/${selectedPromoId}/`,
         {
           credentials: "include",
-          method: "DELETE" 
+          method: "DELETE",
         }
       );
 
       const res = await response.json();
-      if (res.success) {
+      if (res.success || response.ok) {
         alert("Promo berhasil dihapus");
         fetchPromos(); // Refresh promo list after delete
       } else {
@@ -65,9 +64,9 @@ const ManajemenPromo = () => {
     setShowDeleteModal(false); // Hide modal after deletion
   };
 
-  // ✅ Filter
+  // ✅ Filter berdasarkan nama/judul
   const filteredPromos = promos.filter((p) =>
-    p.title.toLowerCase().includes(search.toLowerCase())
+    (p.nama || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -112,26 +111,34 @@ const ManajemenPromo = () => {
                   <th className="p-3 font-bold text-center">Aksi</th>
                 </tr>
               </thead>
-
               <tbody>
                 {filteredPromos.map((promo) => (
                   <tr key={promo.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3">{promo.title}</td>
-                    <td className="p-3">{promo.description}</td>
-                    <td className="p-3">{promo.discount_percent}%</td>
-                    <td className="p-3">
-                      {promo.start_date} - {promo.end_date}
+                    <td className="p-3">{promo.nama}</td>
+                    
+                    {/* 🔥 Deskripsi dimunculkan di sini */}
+                    <td className="p-3 text-gray-700 max-w-xs truncate" title={promo.deskripsi}>
+                        {promo.deskripsi || "-"}
                     </td>
+                    
+                    <td className="p-3">{promo.persen_diskon}%</td>
+                    
+                    <td className="p-3">
+                      {promo.tanggal_mulai} s/d {promo.tanggal_selesai}
+                    </td>
+                    
                     <td className="p-3">
                       <span
-                        className={`px-3 py-1 rounded-lg text-white ${
-                          promo.active ? "bg-green-600" : "bg-red-600"
+                        className={`px-3 py-1 rounded-lg text-white text-sm ${
+                          promo.status === "active" ? "bg-green-600" : "bg-red-600"
                         }`}
                       >
-                        {promo.active ? "Aktif" : "Nonaktif"}
+                        {promo.status === "active" ? "Aktif" : "Nonaktif"}
                       </span>
                     </td>
-                    <td className="p-3">{promo.created_at}</td>
+                    
+                    {/* 🔥 Tanggal (Diambil dari tanggal pembuatan/tanggal mulai) */}
+                    <td className="p-3 text-gray-600">{promo.tanggal_mulai}</td>
 
                     <td className="p-3 text-center flex gap-3 justify-center">
                       <button
@@ -142,7 +149,7 @@ const ManajemenPromo = () => {
                       </button>
 
                       <button
-                        onClick={() => navigate(`/admin/EditPromo/${promo.id}`)} // Menambahkan ID ke URL
+                        onClick={() => navigate(`/admin/EditPromo/${promo.id}`)}
                         className="text-green-600 hover:text-green-800 text-xl"
                       >
                         <FaEdit />
@@ -175,7 +182,13 @@ const ManajemenPromo = () => {
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <h3 className="text-red-600 text-xl font-bold mb-4">Hapus Data?</h3>
-            <p className="text-lg mb-6">Apakah Anda yakin ingin menghapus promo {filteredPromos.find(promo => promo.id === selectedPromoId)?.title}?</p>
+            <p className="text-lg mb-6">
+              Apakah Anda yakin ingin menghapus promo{" "}
+              <strong>
+                {filteredPromos.find((promo) => promo.id === selectedPromoId)?.nama}
+              </strong>
+              ?
+            </p>
             <div className="flex justify-end gap-4">
               <button
                 onClick={handleDelete}

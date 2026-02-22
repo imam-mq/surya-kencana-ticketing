@@ -1,441 +1,275 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FaFilter, FaCalendarAlt } from 'react-icons/fa';
+import React, { useState, useEffect } from "react";
+import axios from "axios"; // Import Axios
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Divider,
   Box,
-  TextField,
-  IconButton,
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import Agent_Navbar from './layout/Agent_Navbar';
-import Sidebar_Agent from './layout/Sidebar_Agent';
+  Heading,
+  Text,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Badge,
+  Button,
+  Flex,
+  Input,
+  useDisclosure,
+  Spinner,
+  useToast
+} from "@chakra-ui/react";
+import { HiSwitchHorizontal } from "react-icons/hi";
+import Sidebar_Agent from "./layout/Sidebar_Agent";
+import Agent_Navbar from "./layout/Agent_Navbar";
+import ModalTransfer from "../components/ui/ModalTransfer";
 
 const KomisiAgent = () => {
-  const [startDate, setStartDate] = useState("2025-01-08");
-  const [endDate, setEndDate] = useState("2025-01-08");
-  const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [openModal, setOpenModal] = useState(false);
-  const [selectedKomisi, setSelectedKomisi] = useState(null);
-  const [buktiTransfer, setBuktiTransfer] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
-  const navigate = useNavigate();
+  // State Filter Tanggal
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  // Sample data
-  const allKomisi = [
-    { no: 1, periode: "1-31 November", totalTransaksi: "Rp.10.000.000", totalKomisi: "Rp.2.000.000", setor: "Rp.8.000.000", status: "sudah bayar" },
-    { no: 2, periode: "1-31 November", totalTransaksi: "Rp.10.000.000", totalKomisi: "Rp.2.000.000", setor: "Rp.8.000.000", status: "sudah bayar" },
-    { no: 3, periode: "1-31 November", totalTransaksi: "Rp.10.000.000", totalKomisi: "Rp.2.000.000", setor: "Rp.8.000.000", status: "sudah bayar" },
-    { no: 4, periode: "1-31 November", totalTransaksi: "Rp.10.000.000", totalKomisi: "Rp.2.000.000", setor: "Rp.8.000.000", status: "belum bayar" },
-  ];
+  // State Data
+  const [dataKomisi, setDataKomisi] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Pagination logic
-  const totalPages = Math.ceil(allKomisi.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentKomisi = allKomisi.slice(startIndex, endIndex);
+  // State untuk Modal
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [selectedItem, setSelectedItem] = useState(null);
+  const toast = useToast();
 
-  const handleCari = () => {
-    alert(`Cari data dari ${startDate} sampai ${endDate}`);
-  };
+  // --- 1. FUNGSI FETCH DATA DARI API ---
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Panggil endpoint (URL tetap sama)
+      const response = await axios.get("http://127.0.0.1:8000/api/accounts/agent/commission-report/", {
+        withCredentials: true,
+        params: {
+            start_date: startDate,
+            end_date: endDate
+        }
+      });
 
-  const handleDetail = (no) => {
-    navigate(`/agent/DetailKomisiAgent/${no}`);
-  };
+      // PERUBAHAN DISINI:
+      // Data respon sekarang langsung Array, tidak perlu destructuring { tagihan_berjalan... } lagi.
+      const riwayatList = response.data; 
 
-  const handleTransfer = (item) => {
-    setSelectedKomisi(item);
-    setOpenModal(true);
-  };
+      // map data riwayat ke format tabel
+      const formattedData = riwayatList.map((item) => ({
+        id: item.id,
+        // Gunakan item.id === 0 atau status 'BELUM BAYAR' untuk mendeteksi tagihan aktif
+        isCurrentBill: item.status === "BELUM BAYAR", 
+        
+        periode: `${item.periode_awal || '-'} s/d ${item.periode_akhir || '-'}`,
+        totalTiket: item.total_kursi || 0,
+        totalTransaksi: item.total_transaksi,
+        totalKomisi: item.total_komisi,
+        setor: item.total_setor_admin,
+        
+        // Mapping Status: Tambahkan case untuk "BELUM BAYAR"
+        status: item.status === "BELUM BAYAR" ? "belum bayar" :
+                item.status === "MENUNGGU" ? "menunggu verifikasi" : 
+                item.status === "DITERIMA" ? "sudah bayar" : "ditolak",
+        
+        // Tombol Transfer hanya nyala jika status 'BELUM BAYAR'
+        canTransfer: item.status === "BELUM BAYAR", 
+        
+        bukti_transfer: item.bukti_transfer
+      }));
 
-  const handleCloseModal = () => {
-    setOpenModal(false);
-    setSelectedKomisi(null);
-    setBuktiTransfer(null);
-    setFilePreview(null);
-  };
+      // Simpan ke state
+      setDataKomisi(formattedData);
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setBuktiTransfer(file);
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFilePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Gagal mengambil data:", error);
+      toast({
+        title: "Gagal memuat data",
+        description: "Pastikan server backend berjalan.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleKonfirmasiTransfer = () => {
-    if (!buktiTransfer) {
-      alert("Silakan upload bukti transfer terlebih dahulu!");
-      return;
-    }
-    
-    // TODO: Implement API call untuk submit transfer
-    alert(`Transfer berhasil dikonfirmasi untuk periode ${selectedKomisi?.periode}`);
-    handleCloseModal();
+  // memanggil data untuk filter perubahan
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // --- FORMAT RUPIAH ---
+  const formatRupiah = (angka) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(angka || 0);
+  };
+
+  // --- LOGIKA KLIK TOMBOL TRANSFER ---
+  const handleTransferClick = (item) => {
+    setSelectedItem(item);
+    onOpen(); // Buka ModalTransfer
+  };
+
+  // --- CALLBACK SAAT SUKSES UPLOAD ---
+  const handleSuccessTransfer = () => {
+    onClose();
+    // Refresh data dari server agar status berubah otomatis jadi 'menunggu verifikasi'
+    fetchData(); 
+    toast({
+      title: "Berhasil",
+      description: "Bukti transfer berhasil dikirim. Menunggu verifikasi admin.",
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <Flex minH="100vh" bg="gray.50">
       <Sidebar_Agent />
-      
-      <div className="flex-1 flex flex-col">
+
+      <Box flex="1" flexDirection="column">
         <Agent_Navbar />
-        
-        <main className="flex-1 p-8">
+
+        <Box p={8}>
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Manajemen Komisi Agent</h1>
-            <p className="text-gray-600 text-lg">Laporan komisi agent • setor admin</p>
-          </div>
+          <Box mb={8}>
+            <Heading size="lg" color="gray.700">Manajemen Komisi Agent</Heading>
+            <Text color="gray.500">Laporan komisi agent • setor admin</Text>
+          </Box>
 
           {/* Filter Card */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <FaFilter className="text-blue-600 text-lg" />
-              <h2 className="text-lg font-bold text-gray-900">Pilih Periode</h2>
-            </div>
-            
-            <div className="grid grid-cols-12 gap-4 items-end">
-              {/* Start Date */}
-              <div className="col-span-5">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Dari Tanggal</label>
-                <div className="relative">
-                  <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* End Date */}
-              <div className="col-span-5">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Sampai Tanggal</label>
-                <div className="relative">
-                  <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Cari Button */}
-              <div className="col-span-2">
-                <button
-                  onClick={handleCari}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-semibold"
-                >
-                  Cari
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Table Card */}
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
-            {/* Table Header with Pagination Control */}
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900">Detail komisi & setor</h3>
-              
-              {/* Items per page selector */}
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600 font-medium">Tampilkan:</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-                <span className="text-sm text-gray-600 font-medium">data</span>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gradient-to-r from-gray-100 to-gray-50">
-                  <tr>
-                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">No</th>
-                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Periode</th>
-                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Total Transaksi</th>
-                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Total Komisi</th>
-                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Setor</th>
-                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                    <th className="py-4 px-16 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {currentKomisi.map((item) => (
-                    <tr key={item.no} className="hover:bg-blue-50 transition-colors duration-200">
-                      <td className="py-4 px-6 text-sm font-medium text-gray-900">{item.no}</td>
-                      <td className="py-4 px-6 text-sm text-gray-700 font-medium">{item.periode}</td>
-                      <td className="py-4 px-6 text-sm font-semibold text-gray-900">{item.totalTransaksi}</td>
-                      <td className="py-4 px-6 text-sm font-semibold text-gray-900">{item.totalKomisi}</td>
-                      <td className="py-4 px-6 text-sm font-semibold text-gray-900">{item.setor}</td>
-                      <td className="py-4 px-6">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                          item.status === "sudah bayar" 
-                            ? "bg-green-100 text-green-700" 
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleDetail(item.no)}
-                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg text-xs font-semibold"
-                          >
-                            <span>Detail</span>
-                          </button>
-                          
-                          <button 
-                            onClick={() => handleTransfer(item)}
-                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-600 to-yellow-400 text-white rounded-lg hover:from-yellow-700 hover:to-yellow-800 transition-all shadow-md hover:shadow-lg text-xs font-semibold"
-                          >
-                            <span>Transfer</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="text-sm text-gray-600">
-                Menampilkan <span className="font-semibold text-gray-900">{startIndex + 1}</span> - <span className="font-semibold text-gray-900">{Math.min(endIndex, allKomisi.length)}</span> dari <span className="font-semibold text-gray-900">{allKomisi.length}</span> data
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                    currentPage === 1
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Previous
-                </button>
-
-                {/* Page Numbers */}
-                <div className="flex items-center gap-1">
-                  {[...Array(totalPages)].map((_, index) => (
-                    <button
-                      key={index + 1}
-                      onClick={() => setCurrentPage(index + 1)}
-                      className={`w-10 h-10 rounded-lg font-semibold transition-all ${
-                        currentPage === index + 1
-                          ? 'bg-blue-600 text-white shadow-md'
-                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                    currentPage === totalPages
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-
-      {/* Modal Transfer */}
-      <Dialog
-        open={openModal}
-        onClose={handleCloseModal}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: '16px',
-            padding: '8px',
-          }
-        }}
-      >
-        <DialogTitle sx={{ 
-          position: 'relative', 
-          textAlign: 'center',
-          fontWeight: 700,
-          fontSize: '1.5rem',
-          pb: 1
-        }}>
-          Periode : {selectedKomisi?.periode}
-          <IconButton
-            onClick={handleCloseModal}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: 'grey.500',
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent sx={{ pt: 2 }}>
-          {/* Informasi Komisi */}
-          <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-              <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>
-                Total Komisi :
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 600, color: '#1976d2' }}>
-                {selectedKomisi?.totalKomisi}
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body1" sx={{ fontWeight: 600, color: '#333' }}>
-                Total Disetor :
-              </Typography>
-              <Typography variant="body1" sx={{ fontWeight: 600, color: '#d32f2f' }}>
-                {selectedKomisi?.setor}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Divider sx={{ my: 3, borderStyle: 'dashed' }} />
-
-          {/* Rekening Admin */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1a1a1a' }}>
-              Rekening Admin :
-            </Typography>
-            <Box sx={{ pl: 1 }}>
-              <Typography variant="body1" sx={{ fontWeight: 600, color: '#333', mb: 0.5 }}>
-                BANK BRI
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-                Norek : 123xxxxx
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#666' }}>
-                A/N : Supatji
-              </Typography>
-            </Box>
-          </Box>
-
-          <Divider sx={{ my: 3, borderStyle: 'dashed' }} />
-
-          {/* Upload Bukti Transfer */}
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1a1a1a' }}>
-              Upload Bukti Transfer
-            </Typography>
-            
-            <input
-              accept="image/*"
-              id="bukti-transfer-upload"
-              type="file"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-            <label htmlFor="bukti-transfer-upload">
-              <Button
-                variant="outlined"
-                component="span"
-                startIcon={<CloudUploadIcon />}
-                fullWidth
-                sx={{
-                  py: 1.5,
-                  borderRadius: '8px',
-                  borderColor: '#d0d0d0',
-                  color: '#666',
-                  textTransform: 'none',
-                  fontSize: '0.95rem',
-                  fontWeight: 500,
-                  '&:hover': {
-                    borderColor: '#1976d2',
-                    backgroundColor: '#f5f5f5',
-                  }
-                }}
-              >
-                {buktiTransfer ? buktiTransfer.name : 'Choose File'}
-              </Button>
-            </label>
-
-            {/* Preview Image */}
-            {filePreview && (
-              <Box sx={{ mt: 2, textAlign: 'center' }}>
-                <img 
-                  src={filePreview} 
-                  alt="Preview" 
-                  style={{ 
-                    maxWidth: '100%', 
-                    maxHeight: '200px', 
-                    borderRadius: '8px',
-                    border: '1px solid #e0e0e0'
-                  }} 
+          <Box bg="white" p={6} borderRadius="xl" shadow="sm" mb={6}>
+            <Flex gap={4} align="end" wrap="wrap">
+              <Box flex="1" minW="200px">
+                <Text fontSize="sm" fontWeight="bold" mb={2} color="gray.600">Dari Tanggal</Text>
+                <Input 
+                  type="date" 
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
                 />
               </Box>
-            )}
+              <Box flex="1" minW="200px">
+                <Text fontSize="sm" fontWeight="bold" mb={2} color="gray.600">Sampai Tanggal</Text>
+                <Input 
+                  type="date" 
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </Box>
+              <Button colorScheme="blue" px={8} alignSelf="end" onClick={fetchData}>
+                Cari
+              </Button>
+            </Flex>
           </Box>
-        </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
-          <Button
-            onClick={handleKonfirmasiTransfer}
-            variant="contained"
-            fullWidth
-            sx={{
-              py: 1.5,
-              borderRadius: '8px',
-              textTransform: 'none',
-              fontSize: '1rem',
-              fontWeight: 600,
-              backgroundColor: '#1976d2',
-              '&:hover': {
-                backgroundColor: '#1565c0',
-              }
-            }}
-          >
-            Konfirmasi Transfer
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </div>
+          {/* Tabel Utama */}
+          <Box bg="white" borderRadius="xl" shadow="md" overflow="hidden" borderWidth="1px">
+            {loading ? (
+                <Flex justify="center" align="center" p={10}>
+                    <Spinner size="xl" color="blue.500" />
+                    <Text ml={3}>Memuat data...</Text>
+                </Flex>
+            ) : (
+                <Table variant="simple">
+                <Thead bg="gray.50">
+                    <Tr>
+                    <Th>No</Th>
+                    <Th>Periode</Th>
+                    <Th>Total Kursi</Th>
+                    <Th isNumeric>Total Transaksi</Th>
+                    <Th isNumeric>Total Komisi</Th>
+                    <Th isNumeric>Setor Admin</Th>
+                    <Th>Status</Th>
+                    <Th>Aksi</Th>
+                    </Tr>
+                </Thead>
+                <Tbody>
+                    {dataKomisi.length === 0 ? (
+                        <Tr>
+                            <Td colSpan={8} textAlign="center" py={6} color="gray.500">
+                                Tidak ada data tagihan atau riwayat.
+                            </Td>
+                        </Tr>
+                    ) : (
+                        dataKomisi.map((item, index) => (
+                          <Tr key={index} _hover={{ bg: "gray.50" }}>
+                            <Td>{index + 1}</Td>
+                            <Td fontWeight="medium">{item.periode}</Td>
+                            <Td>{item.totalTiket}</Td>
+                            <Td isNumeric>{formatRupiah(item.totalTransaksi)}</Td>
+                            <Td isNumeric color="green.600">{formatRupiah(item.totalKomisi)}</Td>
+                            <Td isNumeric fontWeight="bold" color="blue.600">{formatRupiah(item.setor)}</Td>
+                            
+                            {/* Badge Status */}
+                            <Td>
+                              <Badge
+                                px={3}
+                                py={1}
+                                borderRadius="full"
+                                colorScheme={
+                                item.status === "sudah bayar" ? "green" : 
+                                item.status === "menunggu verifikasi" ? "yellow" : 
+                                item.status === "ditolak" ? "red" : "red" // Merah untuk 'belum bayar'
+                                }
+                              >
+                                {item.status.toUpperCase()}
+                              </Badge>
+                            </Td>
+
+                            {/* Tombol Aksi */}
+                            <Td>
+                            {item.canTransfer ? (
+                                <Button
+                                size="sm"
+                                textColor="white"
+                                leftIcon={<HiSwitchHorizontal />}
+                                colorScheme="yellow" // Kuning Oranye agar mencolok
+                                onClick={() => handleTransferClick(item)}
+                                boxShadow="sm"
+                                >
+                                Transfer
+                                </Button>
+                            ) : (
+                                <Button size="sm" colorScheme="blue" variant="outline" isDisabled>
+                                Detail
+                                </Button>
+                            )}
+                            </Td>
+                          </Tr>
+                        ))
+                    )}
+                </Tbody>
+                </Table>
+            )}
+            
+            
+            <Box p={4} borderTopWidth="1px">
+              <Flex justify="space-between" align="center">
+                <Text fontSize="sm" color="gray.500">Menampilkan {dataKomisi.length} data</Text>
+                <Flex gap={2}>
+                  <Button size="sm" isDisabled>Previous</Button>
+                  <Button size="sm" colorScheme="blue">1</Button>
+                  <Button size="sm" isDisabled>Next</Button>
+                </Flex>
+              </Flex>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      
+      <ModalTransfer 
+        isOpen={isOpen} 
+        onClose={onClose} 
+        data={selectedItem}
+        onSuccess={handleSuccessTransfer}
+      />
+    </Flex>
   );
 };
 

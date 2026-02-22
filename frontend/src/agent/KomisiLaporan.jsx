@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaFilter, FaCalendarAlt, FaFilePdf } from 'react-icons/fa';
+import { FaFilter, FaCalendarAlt, FaFilePdf, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import axios from 'axios';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -19,7 +19,7 @@ const KomisiLaporan = () => {
   const fetchCommissions = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("http://127.0.0.1:8000/api/accounts/agent/commission-report/", {
+      const response = await axios.get("http://127.0.0.1:8000/api/accounts/agent/ticket-report/", {
         withCredentials: true, 
         params: {
           start_date: startDate,
@@ -28,15 +28,7 @@ const KomisiLaporan = () => {
       });
       
       const rawData = response.data.results || response.data || [];
-
-      const formattedData = rawData.map(item => ({
-        ...item,
-        // Memastikan data menjadi array agar bisa di-map di tabel tanpa error
-        display_kursi: Array.isArray(item.kursi) ? item.kursi : (item.kursi ? [item.kursi] : []),
-        display_nama: Array.isArray(item.nama_penumpang) ? item.nama_penumpang : (item.nama_penumpang ? [item.nama_penumpang] : [])
-      }));
-
-      setAllTransactions(formattedData); 
+      setAllTransactions(rawData); 
 
     } catch (error) {
       console.error("Error fetching commission data:", error);
@@ -64,18 +56,82 @@ const KomisiLaporan = () => {
     alert("Fitur Download PDF sedang disiapkan...");
   };
 
+  // --- LOGIKA SEARCH (ARRAY & STRING) ---
   const filteredTransactions = allTransactions.filter((transaction) => {
     const query = searchQuery.toLowerCase();
-    const matchNama = transaction.nama_penumpang?.some(nama => 
-      nama.toLowerCase().includes(query)
-    );
-    const matchTujuan = transaction.tujuan?.toLowerCase().includes(query);
+    
+    // Cek Nama Penumpang (Array atau String)
+    const matchNama = Array.isArray(transaction.nama_penumpang) 
+      ? transaction.nama_penumpang.some(nama => String(nama).toLowerCase().includes(query))
+      : String(transaction.nama_penumpang || "").toLowerCase().includes(query);
+
+    // Cek Tujuan (String)
+    const tujuan = transaction.tujuan || "";
+    const matchTujuan = tujuan.toLowerCase().includes(query);
+
     return matchNama || matchTujuan;
   });
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentTransactions = filteredTransactions.slice(startIndex, startIndex + itemsPerPage);
+
+  // --- PAGINATION COMPONENT (ANGKA) ---
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    let pages = [];
+    // Logic simple: tampilkan semua halaman jika sedikit, atau persingkat (opsional)
+    // Di sini kita tampilkan semua angka halaman untuk kesederhanaan sesuai gambar
+    for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+    }
+
+    return (
+        <div className="flex items-center gap-1">
+            {/* Tombol Previous (<) */}
+            <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${
+                    currentPage === 1 
+                    ? 'text-gray-300 cursor-not-allowed' 
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-blue-600'
+                }`}
+            >
+                <FaChevronLeft className="text-xs" />
+            </button>
+
+            {/* Angka Halaman */}
+            {pages.map(page => (
+                <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-semibold transition-all ${
+                        currentPage === page
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                    {page}
+                </button>
+            ))}
+
+            {/* Tombol Next (>) */}
+            <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${
+                    currentPage === totalPages 
+                    ? 'text-gray-300 cursor-not-allowed' 
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-blue-600'
+                }`}
+            >
+                <FaChevronRight className="text-xs" />
+            </button>
+        </div>
+    );
+  };
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -152,7 +208,7 @@ const KomisiLaporan = () => {
                 </div>
               </div>
 
-              {/* Tombol Eksport PDF - Sesuai Gambar */}
+              {/* Tombol Eksport PDF */}
               <div className="pb-1">
                 <button
                   onClick={handleDownloadPDF}
@@ -164,7 +220,7 @@ const KomisiLaporan = () => {
               </div>
             </div>
 
-            {/* Tombol Reset (Optional, diletakkan kecil di bawah jika perlu) */}
+            {/* Tombol Reset */}
             {(startDate || endDate || searchQuery) && (
               <button 
                 onClick={() => {setStartDate(""); setEndDate(""); setSearchQuery("");}}
@@ -202,7 +258,8 @@ const KomisiLaporan = () => {
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="py-4 px-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">No</th>
-                    <th className="py-4 px-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tanggal</th>
+                    <th className="py-4 px-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tgl Transaksi</th>
+                    <th className="py-4 px-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Jadwal</th>
                     <th className="py-4 px-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tipe Bis</th>
                     <th className="py-4 px-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Kursi</th>
                     <th className="py-4 px-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nama Penumpang</th>
@@ -220,40 +277,59 @@ const KomisiLaporan = () => {
                   ) : currentTransactions.map((transaction, index) => (
                     <tr key={transaction.id || index} className="hover:bg-blue-50 transition-colors duration-200">
                       <td className="py-4 px-4 text-sm font-medium text-gray-900">{startIndex + index + 1}</td>
-                      <td className="py-4 px-4 text-sm text-gray-700">{transaction.tanggal}</td>
+
+                      <td className="py-4 px-4 text-sm font-semibold text-blue-700 whitespace-nowrap">
+                        {transaction.tanggal_transaksi}
+                      </td>
+                      
+                      {/* 1. JADWAL */}
+                      <td className="py-4 px-4 text-sm text-gray-700 whitespace-nowrap">
+                        {transaction.jadwal}
+                      </td>
+
                       <td className="py-4 px-4 text-sm text-gray-700">{transaction.tipe_bis}</td>
                       
+                      {/* 2. KURSI (Looping Array agar jadi Badge) */}
                       <td className="py-4 px-4">
-                        <div className="flex flex-wrap gap-1 items-center">
-                          {transaction.display_kursi?.map((k, i) => (
-                            <React.Fragment key={i}>
-                              <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-bold uppercase">
+                        <div className="flex flex-wrap gap-1">
+                          {Array.isArray(transaction.kursi) && transaction.kursi.length > 0 ? (
+                            transaction.kursi.map((k, i) => (
+                              <span key={i} className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-bold uppercase border border-blue-200">
                                 {k}
                               </span>
-                              {i < transaction.display_kursi.length - 1 && <span className="text-gray-400">,</span>}
-                            </React.Fragment>
-                          ))}
+                            ))
+                          ) : (
+                            <span className="text-gray-400 text-xs">-</span>
+                          )}
                         </div>
                       </td>
 
+                      {/* 3. NAMA PENUMPANG (Looping Array agar tersusun rapi) */}
                       <td className="py-4 px-4 text-sm text-gray-700">
-                        <div className="flex flex-col gap-1">
-                          {transaction.display_nama?.map((nama, i) => (
-                            <span key={i} className="block capitalize font-medium">
-                              {nama}
-                            </span>
-                          ))}
-                        </div>
+                          {Array.isArray(transaction.nama_penumpang) && transaction.nama_penumpang.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {transaction.nama_penumpang.map((name, i) => (
+                                <span key={i} className="capitalize font-medium flex items-center gap-1">
+                                  • {name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
                       </td>
 
                       <td className="py-4 px-4 text-sm text-gray-700 max-w-xs truncate">{transaction.keberangkatan}</td>
                       <td className="py-4 px-4 text-sm text-gray-700 max-w-xs truncate">{transaction.tujuan}</td>
                       
-                      <td className="py-4 px-4 text-sm font-semibold text-gray-900">
-                        {formatRupiah(transaction.harga_tiket)}
+                      {/* 4. HARGA TOTAL */}
+                      <td className="py-4 px-4 text-sm font-semibold text-gray-900 whitespace-nowrap">
+                        {formatRupiah(transaction.harga_total)}
                       </td>
-                      <td className="py-4 px-4 text-sm font-bold text-green-600">
-                        {formatRupiah(transaction.komisi)}
+
+                      {/* 5. KOMISI TOTAL */}
+                      <td className="py-4 px-4 text-sm font-bold text-green-600 whitespace-nowrap">
+                        {formatRupiah(transaction.komisi_total)}
                       </td>
                     </tr>
                   ))}
@@ -266,27 +342,9 @@ const KomisiLaporan = () => {
                 Menampilkan <span className="font-semibold text-gray-900">{allTransactions.length > 0 ? startIndex + 1 : 0}</span> - <span className="font-semibold text-gray-900">{Math.min(startIndex + itemsPerPage, allTransactions.length)}</span> dari <span className="font-semibold text-gray-900">{allTransactions.length}</span> data
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                    currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Previous
-                </button>
-
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                    currentPage === totalPages || totalPages === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Next
-                </button>
-              </div>
+              {/* RENDER PAGINATION HERE */}
+              {renderPagination()}
+              
             </div>
           </div>
         </main>

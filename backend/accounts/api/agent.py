@@ -1,272 +1,302 @@
 from collections import defaultdict
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Count, Min, Max
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import SessionAuthentication
-from rest_framework import status
+from django.utils import timezone
+from django.utils.crypto import get_random_string
+from django.shortcuts import get_object_or_404
 
+from accounts.authenticate import CsrfExemptSessionAuthentication
 from accounts.models import (
-    Schedule, 
-    Ticket, 
-    AgentCommission, 
-    CommissionPeriod
+    Jadwal, Tiket, Pemesanan, KomisiAgen, 
+    PeriodeKomisi, TransferKomisi, ItemPeriodeKomisi
 )
 from accounts.serializers import (
-    ScheduleOutSerializer,
-    AgentBookingSerializer,
-    AgentTicketSerializer,
-    AgentCommissionSerializer,
-    CommissionPeriodSerializer
+    ScheduleOutSerializer, AgentBookingSerializer, 
+    TiketSerializer, PemesananSerializer, AgentTicketHistorySerializer,
+    AgentCommissionReportSerializer,
 )
 
-# Custom Auth untuk menangani masalah 403 Forbidden pada Session Agent (CORS/CSRF)
-class UnsafeSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return None
+# ===================== HELPER =====================
+def _is_agent(user):
+    return getattr(user, "peran", None) == "agent"
 
-# --- FITUR PEMESANAN (BOOKING) ---
-
+# ===================== 1. LIHAT JADWAL =====================
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def agent_jadwal_list(request):
-    """List jadwal aktif khusus untuk role agent"""
-    if getattr(request.user, "role", None) != "agent":
+    if not _is_agent(request.user):
         return Response({"error": "Akses ditolak"}, status=403)
 
-    origin = request.GET.get("origin")
-    destination = request.GET.get("destination")
-    date = request.GET.get("date")
+    asal = request.GET.get("origin")
+    tujuan = request.GET.get("destination")
+    
+    qs = Jadwal.objects.select_related("bus").filter(status="active")
 
-    qs = Schedule.objects.select_related("bus").filter(status="active")
-
-    if origin: qs = qs.filter(origin__icontains=origin)
-    if destination: qs = qs.filter(destination__icontains=destination)
-    if date: qs = qs.filter(date=date)
+    if asal: qs = qs.filter(asal__icontains=asal)
+    if tujuan: qs = qs.filter(tujuan__icontains=tujuan)
 
     return Response(ScheduleOutSerializer(qs, many=True).data)
 
-@api_view(["POST"])
-@authentication_classes([UnsafeSessionAuthentication])
-@permission_classes([IsAuthenticated])
-def agent_create_booking(request):
-    """Proses pembuatan tiket oleh agent dengan komisi OTOMATIS 15%"""
-    if getattr(request.user, "role", None) != "agent":
-        return Response({"error": "Hanya agent yang diizinkan"}, status=403)
-
-    data = request.data.copy()
-    if 'schedule_id' in data and 'schedule' not in data:
-        data['schedule'] = data['schedule_id']
-
-    serializer = AgentBookingSerializer(data=data)
-    serializer.is_valid(raise_exception=True)
-
-    schedule = serializer.validated_data["schedule"]
-    seats = serializer.validated_data["seats"]
-    passengers = serializer.validated_data["passengers"]
-    agent = request.user 
-
-    if len(seats) != len(passengers):
-        return Response({"error": "Data tidak ditemukan untuk periode tersebut"}, status=400)
-
-    try:
-        with transaction.atomic():
-            tickets = []
-            
-            # --- LOGIKA UTAMA KOMISI 15% ---
-            # Mengambil komisi agen, jika di database null/0, dipaksa ke 15
-            comm_percent = getattr(agent, 'commission_percent', 15) or 15
-            
-            # Perhitungan nominal rupiah (15% dari harga tiket)
-            # Menggunakan float() untuk keamanan perhitungan matematis
-            comm_amount_per_ticket = (float(comm_percent) / 100) * float(schedule.price)
-            # -------------------------------
-
-            for idx, seat in enumerate(seats):
-                p = passengers[idx]
-                ticket = Ticket.objects.create(
-                    schedule=schedule,
-                    buyer=agent,
-                    seat_id=seat,
-                    passenger_name=p.get("name"),
-                    passenger_ktp=p.get("no_ktp") or p.get("ktp"),
-                    passenger_phone=p.get("phone"),
-                    passenger_gender=p.get("gender"),
-                    bus_name=schedule.bus.name,
-                    bus_code=schedule.bus.code,
-                    origin=schedule.origin,
-                    destination=schedule.destination,
-                    departure_date=schedule.date,
-                    departure_time=schedule.time,
-                    price_paid=schedule.price,
-                    payment_status="paid",
-                    bought_by="agent",
-                )
-
-                # Simpan catatan komisi ke database
-                AgentCommission.objects.create(
-                    agent=agent,
-                    ticket=ticket,
-                    commission_percent=comm_percent,
-                    commission_amount=comm_amount_per_ticket,
-                    status="unsettled"
-                )
-                tickets.append(ticket)
-
-            return Response({
-                "success": True,
-                "message": f"{len(tickets)} Tiket berhasil diterbitkan (Komisi {comm_percent}%)",
-                "tickets": AgentTicketSerializer(tickets, many=True).data
-            }, status=status.HTTP_201_CREATED)
-
-    except Exception as e:
-        return Response({"error": f"Gagal memproses: {str(e)}"}, status=500)
-
-# --- FITUR RIWAYAT TIKET ---
-
+# ===================== 2. STATISTIK DASHBOARD =====================
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def agent_ticket_list(request):
-    """Riwayat tiket agent dikelompokkan per transaksi"""
-    if getattr(request.user, "role", None) != "agent":
-        return Response({"error": "Hanya agent yang diizinkan"}, status=403)
-
-    q = request.GET.get("q", "").lower()
-    tickets = Ticket.objects.filter(buyer=request.user, bought_by="agent").order_by("-purchased_at")
-
-    grouped = defaultdict(lambda: {
-        "id": None, "bus_name": "", "bus_code": "", "origin": "", "destination": "",
-        "departure_date": "", "departure_time": "", "seats": [], "passenger_names": [],
-        "purchased_at": None,
-    })
-
-    for t in tickets:
-        key = (t.schedule_id, t.purchased_at.strftime('%Y-%m-%d %H:%M'))
-        g = grouped[key]
-
-        if g["id"] is None:
-            g.update({
-                "id": t.id, "bus_name": t.bus_name, "bus_code": t.bus_code,
-                "origin": t.origin, "destination": t.destination,
-                "departure_date": t.departure_date, "departure_time": t.departure_time,
-                "purchased_at": t.purchased_at,
-            })
-        g["seats"].append(t.seat_id)
-        if t.passenger_name: g["passenger_names"].append(t.passenger_name)
-
-    result = list(grouped.values())
-    if q:
-        result = [r for r in result if any(q in name.lower() for name in r["passenger_names"])]
-
-    return Response(result, status=200)
-
-# --- FITUR MANAJEMEN KOMISI & SETORAN ---
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_commission_management(request):
-    if getattr(request.user, "role", None) != "agent":
+def agent_dashboard_stats(request):
+    if not _is_agent(request.user):
         return Response({"error": "Akses ditolak"}, status=403)
 
     user = request.user
-    dari = request.GET.get('dari_tanggal')
-    sampai = request.GET.get('sampai_tanggal')
+    # Ambil komisi unsettled untuk hitung tagihan yang belum dibayar
+    komisi_unsettled = KomisiAgen.objects.filter(agen=user, status='unsettled')
+    
+    total_tiket = komisi_unsettled.count()
+    total_komisi = komisi_unsettled.aggregate(Sum('jumlah_komisi'))['jumlah_komisi__sum'] or 0
+    
+    # Hitung setoran = (Total Harga Tiket) - (Total Komisi)
+    total_kotor = sum([float(k.tiket.jadwal.harga) for k in komisi_unsettled])
+    tagihan_setoran = total_kotor - float(total_komisi)
 
-    qs = CommissionPeriod.objects.filter(agent=user).order_by('-start_date')
+    return Response({
+        "tiket_aktif": total_tiket,
+        "total_komisi_pending": total_komisi,
+        "tagihan_setoran": tagihan_setoran
+    })
 
-    if dari and sampai:
-        qs = qs.filter(start_date__gte=dari, end_date__lte=sampai)
-
-    serializer = CommissionPeriodSerializer(qs, many=True)
-    return Response(serializer.data)
-
+# ===================== 3. BOOKING TIKET =====================
 @api_view(["POST"])
-@authentication_classes([UnsafeSessionAuthentication])
+@authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
-def agent_submit_transfer(request, period_id):
-    if getattr(request.user, "role", None) != "agent":
+def agent_create_booking(request):
+    if not _is_agent(request.user):
         return Response({"error": "Akses ditolak"}, status=403)
 
+    serializer = AgentBookingSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    jadwal = get_object_or_404(Jadwal, id=serializer.validated_data["jadwal_id"])
+    seats = serializer.validated_data["seats"]
+    passengers = serializer.validated_data["passengers"]
+
     try:
-        period = CommissionPeriod.objects.get(id=period_id, agent=request.user)
-        bukti = request.FILES.get('bukti_transfer')
-        
-        if not bukti:
-            return Response({"error": "Bukti transfer wajib diunggah"}, status=400)
+        with transaction.atomic():
+            total_harga = jadwal.harga * len(seats)
+            persen_komisi = 15.0 # Default 15% sesuai kesepakatan
             
-        period.bukti_transfer = bukti
-        period.save()
-        
-        return Response({
-            "success": True, 
-            "message": "Bukti transfer berhasil dikirim."
-        })
-    except CommissionPeriod.DoesNotExist:
-        return Response({"error": "Data periode tidak ditemukan"}, status=404)
+            if hasattr(request.user, 'profil_agen'):
+                persen_komisi = float(request.user.profil_agen.persen_komisi)
+
+            # 1. Buat Induk Pemesanan
+            pemesanan = Pemesanan.objects.create(
+                pembeli=request.user,
+                peran_pembeli='agent',
+                jadwal=jadwal,
+                metode_pembayaran='deposit',
+                status_pembayaran='paid',
+                total_harga=total_harga,
+                harga_akhir=total_harga
+            )
+
+            # 2. Buat Tiket & Catat Komisi per Tiket
+            for i, seat in enumerate(seats):
+                p = passengers[i]
+                tiket = Tiket.objects.create(
+                    pemesanan=pemesanan,
+                    jadwal=jadwal,
+                    nomor_kursi=seat,
+                    nama_penumpang=p.get("name"),
+                    kode_tiket=f"TKT-{get_random_string(8).upper()}"
+                )
+                
+                KomisiAgen.objects.create(
+                    agen=request.user,
+                    tiket=tiket,
+                    persen_komisi=persen_komisi,
+                    jumlah_komisi=(float(jadwal.harga) * persen_komisi) / 100,
+                    status='unsettled'
+                )
+
+            return Response(PemesananSerializer(pemesanan).data, status=201)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+# ===================== 4. RIWAYAT TIKET =====================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def agent_ticket_list(request):
+    # Mengambil riwayat booking milik agen yang sedang login
+    user = request.user
+    bookings = Pemesanan.objects.filter(pembeli=user).order_by('-dibuat_pada')
+    
+    # Gunakan serializer yang sudah mendukung field bus_name, departure_date, dll
+    serializer = AgentTicketHistorySerializer(bookings, many=True)
+    return Response(serializer.data)
+
+
+# ===================== 5. SUBMIT TRANSFER =====================
+@api_view(["POST"])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def agent_submit_transfer(request):
+    if not _is_agent(request.user):
+        return Response({"error": "Akses ditolak"}, status=403)
+
+    bukti = request.FILES.get('bukti_transfer')
+    if not bukti:
+        return Response({"error": "Bukti transfer wajib diunggah"}, status=400)
+
+    komisi_unsettled = KomisiAgen.objects.filter(agen=request.user, status='unsettled')
+    
+    if not komisi_unsettled.exists():
+        return Response({"error": "Tidak ada tagihan untuk disetor"}, status=400)
+
+    try:
+        with transaction.atomic():
+            stats = komisi_unsettled.aggregate(
+                total_komisi=Sum('jumlah_komisi'),
+                total_tiket=Count('id')
+            )
+            
+            total_kotor = sum([float(k.tiket.jadwal.harga) for k in komisi_unsettled])
+
+            # 1. Buat Periode Rekapan
+            periode = PeriodeKomisi.objects.create(
+                agen=request.user,
+                tanggal_mulai=timezone.now().date(),
+                tanggal_selesai=timezone.now().date(),
+                total_transaksi=stats['total_tiket'],
+                total_komisi=stats['total_komisi'],
+                total_setor=total_kotor - float(stats['total_komisi']),
+                status='waiting_validation'
+            )
+
+            # 2. Masukkan Tiket ke Detail Periode
+            for k in komisi_unsettled:
+                ItemPeriodeKomisi.objects.create(
+                    periode=periode,
+                    tiket=k.tiket,
+                    jumlah_komisi=k.jumlah_komisi
+                )
+
+            # 3. Buat Bukti Transfer
+            TransferKomisi.objects.create(
+                periode=periode,
+                tanggal_transfer=timezone.now(),
+                jumlah=periode.total_setor,
+                bukti_file=bukti,
+                status='pending'
+            )
+
+            # 4. Tandai Komisi sudah diproses
+            komisi_unsettled.update(status='included_in_period')
+
+            return Response({"success": True}, status=201)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
+# ===================== REPORT KOMISI AGENT =====================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def agent_ticket_report(request):
+    if not _is_agent(request.user):
+        return Response({"error": "Akses ditolak"}, status=403)
+
+    user = request.user
+    
+    # Ambil parameter tanggal dari filter kalender React
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    # Cari tiket agent yang berstatus 'paid' (Lunas)
+    qs = Pemesanan.objects.filter(pembeli=user, status_pembayaran='paid').order_by('-dibuat_pada')
+
+    # Logika untuk fitur filter tanggal
+    if start_date:
+        qs = qs.filter(dibuat_pada__date__gte=start_date)
+    if end_date:
+        qs = qs.filter(dibuat_pada__date__lte=end_date)
+
+    # Kirim data ke React pakai format khusus laporan
+    serializer = AgentCommissionReportSerializer(qs, many=True)
+    return Response(serializer.data)
+
+# ===================== Setor Agent =====================
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def agent_commission_report(request):
-    """Laporan Komisi Grouping per Transaksi"""
-    if getattr(request.user, "role", None) != "agent":
+    if not _is_agent(request.user): 
         return Response({"error": "Akses ditolak"}, status=403)
 
+    user = request.user
+    response_data = []
+
+    # -----------------------------------------------------
+    # 1. CEK TAGIHAN AKTIF (Status 'unsettled')
+    # -----------------------------------------------------
+    komisi_unsettled = KomisiAgen.objects.filter(agen=user, status='unsettled')
+    
+    if komisi_unsettled.exists():
+        # Hitung statistik dari tiket yang belum dibayar
+        stats = komisi_unsettled.aggregate(
+            total_komisi=Sum('jumlah_komisi'),
+            periode_awal=Min('tiket__pemesanan__dibuat_pada'),
+            periode_akhir=Max('tiket__pemesanan__dibuat_pada')
+        )
+        total_tiket = komisi_unsettled.count()
+        total_kotor = sum([float(k.tiket.jadwal.harga) for k in komisi_unsettled])
+        
+        # Masukkan sebagai baris pertama (BELUM BAYAR)
+        response_data.append({
+            "id": 0, # ID 0 penanda ini bukan dari tabel PeriodeKomisi
+            "periode_awal": stats['periode_awal'].strftime('%d %b %Y') if stats['periode_awal'] else "-",
+            "periode_akhir": stats['periode_akhir'].strftime('%d %b %Y') if stats['periode_akhir'] else "-",
+            "total_kursi": total_tiket,
+            "total_transaksi": total_kotor,
+            "total_komisi": float(stats['total_komisi']),
+            "total_setor_admin": total_kotor - float(stats['total_komisi']),
+            "status": "BELUM BAYAR",
+            "bukti_transfer": None
+        })
+
+    # -----------------------------------------------------
+    # 2. AMBIL RIWAYAT SETORAN (Dari tabel PeriodeKomisi)
+    # -----------------------------------------------------
+    # Ambil filter tanggal jika ada
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
-    search_query = request.GET.get('q', '').lower()
 
-    if start_date and not end_date:
-        return Response({
-            "error": "Filter tidak lengkap",
-            "message": "Data tidak ditemukan untuk periode tersebut"
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    commissions = AgentCommission.objects.filter(agent=request.user).select_related('ticket')
-
-    # Filter hanya dijalankan jika KEDUANYA ada
-    if start_date and end_date:
-        commissions = commissions.filter(ticket__departure_date__range=[start_date, end_date])
-        
-        # Opsi: Jika hasil filter kosong, kirim error 404
-        if not commissions.exists():
-            return Response({"error": "Data tidak ditemukan untuk periode tersebut"}, status=404)
+    riwayat_qs = PeriodeKomisi.objects.filter(agen=user).order_by('-dibuat_pada')
     
-    # Filter berdasarkan nama penumpang
-    if search_query:
-        commissions = commissions.filter(ticket__passenger_name__icontains=search_query)
+    if start_date:
+        riwayat_qs = riwayat_qs.filter(tanggal_mulai__gte=start_date)
+    if end_date:
+        riwayat_qs = riwayat_qs.filter(tanggal_selesai__lte=end_date)
 
-    grouped_data = defaultdict(lambda: {
-        "id": None, "tanggal": "", "tipe_bis": "", "kursi": [],
-        "nama_penumpang": [], "keberangkatan": "", "tujuan": "",
-        "harga_tiket": 0, "komisi": 0
-    })
+    for riwayat in riwayat_qs:
+        # Konversi status dari bahasa database ke bahasa Frontend
+        status_frontend = "MENUNGGU"
+        if riwayat.status == "waiting_validation": status_frontend = "MENUNGGU"
+        elif riwayat.status == "approved": status_frontend = "DITERIMA"
+        elif riwayat.status == "rejected": status_frontend = "DITOLAK"
 
-    for comm in commissions:
-        ticket = comm.ticket
-        time_key = ticket.purchased_at.strftime('%Y-%m-%d %H:%M:%S') 
-        unique_key = f"{ticket.schedule.id}_{time_key}"
+        # Ambil bukti transfer jika ada (dari tabel relasi)
+        transfer = riwayat.transfer.first()
+        bukti_url = request.build_absolute_uri(transfer.bukti_file.url) if transfer and transfer.bukti_file else None
 
-        item = grouped_data[unique_key]
+        # Tambahkan ke daftar respon
+        response_data.append({
+            "id": riwayat.id,
+            "periode_awal": riwayat.tanggal_mulai.strftime('%d %b %Y'),
+            "periode_akhir": riwayat.tanggal_selesai.strftime('%d %b %Y'),
+            "total_kursi": riwayat.total_transaksi,
+            "total_transaksi": float(riwayat.total_setor) + float(riwayat.total_komisi),
+            "total_komisi": float(riwayat.total_komisi),
+            "total_setor_admin": float(riwayat.total_setor),
+            "status": status_frontend,
+            "bukti_transfer": bukti_url
+        })
 
-        if item["id"] is None:
-            item.update({
-                "id": ticket.id, "tanggal": ticket.departure_date,
-                "tipe_bis": ticket.bus_name, "keberangkatan": ticket.origin,
-                "tujuan": ticket.destination,
-            })
-
-        item["kursi"].append(ticket.seat_id)
-        item["nama_penumpang"].append(ticket.passenger_name)
-        item["harga_tiket"] += float(ticket.price_paid or 0)
-        item["komisi"] += float(comm.commission_amount or 0)
-
-    total_unsettled = AgentCommission.objects.filter(
-        agent=request.user, 
-        status="unsettled"
-    ).aggregate(total=Sum('commission_amount'))['total'] or 0
-
-    return Response({
-        "total_komisi_aktif": total_unsettled,
-        "results": list(grouped_data.values()) 
-    })
+    return Response(response_data)

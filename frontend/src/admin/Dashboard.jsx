@@ -33,18 +33,16 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const token = localStorage.getItem("accessToken"); // Ambil token login dari localStorage
-
+                // Tambahkan credentials: "include" agar cookie session terkirim
                 const [usersRes, agentsRes] = await Promise.all([
-                    fetch("http://127.0.0.1:8000/api/accounts/users/"),
-                    fetch("http://127.0.0.1:8000/api/accounts/agents/"),
+                    fetch("http://127.0.0.1:8000/api/accounts/users/", { credentials: "include" }),
+                    fetch("http://127.0.0.1:8000/api/accounts/agents/", { credentials: "include" }),
                 ]);
+
+                if (!usersRes.ok || !agentsRes.ok) throw new Error("Gagal mengambil data");
 
                 const usersData = await usersRes.json();
                 const agentsData = await agentsRes.json();
-
-                console.log("Users Data:", usersData);
-                console.log("Agents Data:", agentsData);
 
                 setTotalUsers(usersData.length || 0);
                 setTotalAgents(agentsData.length || 0);

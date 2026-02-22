@@ -197,7 +197,7 @@ const TiketTerbit = () => {
             {/* Show Data Dropdown - Di dalam card */}
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span>Show</span>
+                <span>Lihat</span>
                 <select 
                   value={itemsPerPage} 
                   onChange={(e) => {
@@ -261,8 +261,8 @@ const TiketTerbit = () => {
                       <td className="py-4 px-6 text-sm text-gray-900">
                         {ticket.jam}
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="inline-flex items-center px-3 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                      <td className="py-4 px-1">
+                        <span className="inline-flex items-center px-1 py-2 rounded text-xs font-bold bg-blue-100 text-blue-700">
                           {ticket.jadwal}
                         </span>
                       </td>
@@ -322,7 +322,7 @@ const TiketTerbit = () => {
               <div className="flex items-center justify-between">
                 {/* Info Text */}
                 <p className="text-sm text-gray-600">
-                  Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filtered.length)} of {filtered.length} data
+                  Lihat {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filtered.length)} of {filtered.length} data
                 </p>
 
                 {/* Pagination Buttons */}

@@ -8,7 +8,7 @@ export default function LoginAdminAgent() {
   const cardColor = "#D4C8A6";
 
   const [role, setRole] = useState("admin");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState(""); // Ubah dari username ke email
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ export default function LoginAdminAgent() {
     e.preventDefault();
     setIsLoading(true);
 
+    // Endpoint sudah benar sesuai urls.py terbaru
     const loginUrl =
       role === "admin"
         ? "http://127.0.0.1:8000/api/accounts/login-admin-api/"
@@ -27,35 +28,36 @@ export default function LoginAdminAgent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ username, password }),
+        // PENTING: Backend sekarang mencari 'email', bukan 'username'
+        body: JSON.stringify({ email, password }), 
       });
 
       const data = await response.json();
 
-      if (!response.ok || data.success === false) {
-        alert(data.message || "Login gagal");
-        return;
+      if (!response.ok) {
+        // Jika 401, biasanya email atau password salah
+        throw new Error(data.error || data.message || "Login gagal, cek kembali akun Anda");
       }
 
-      const serverRole = data.role;
+      // Validasi peran (peran dikembalikan oleh auth.py)
+      const serverRole = data.peran; 
 
       if (role !== serverRole) {
-        alert(`Akun ini bertipe "${serverRole}", bukan "${role}"`);
+        alert(`Akun ini terdaftar sebagai "${serverRole}", Anda mencoba login sebagai "${role}"`);
         return;
       }
 
+      // Navigasi & Simpan Session (Opsional: simpan info user ke localStorage jika perlu)
       if (serverRole === "agent") {
         navigate("/agent/dashboard");
-      }
-
-      if (serverRole === "admin") {
+      } else if (serverRole === "admin") {
         navigate("/admin/dashboard");
       }
 
     } catch (err) {
-      alert("Gagal terhubung ke server");
+      alert(err.message);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -101,13 +103,13 @@ export default function LoginAdminAgent() {
 
           <div>
             <label className="block text-sm font-semibold mb-1 text-gray-700">
-              Username
+              Email {role === "admin" ? "Admin" : "Agent"}
             </label>
             <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder={`Masukkan username ${role}`}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Masukkan email terdaftar"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               required
             />
@@ -127,7 +129,6 @@ export default function LoginAdminAgent() {
             />
           </div>
 
-          {/* HANYA GUNAKAN SATU TOMBOL INI */}
           <SubmitButton isLoading={isLoading}>
             Masuk
           </SubmitButton>
