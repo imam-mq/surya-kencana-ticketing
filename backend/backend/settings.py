@@ -7,12 +7,9 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-<<<<<<< HEAD
-=======
 # Mengambil kunci rahasia secara aman
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dummy-key-untuk-github')
 
->>>>>>> 5d16269 (Update settings.py)
 DEBUG = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 

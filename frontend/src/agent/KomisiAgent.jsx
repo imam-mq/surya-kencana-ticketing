@@ -119,13 +119,6 @@ const KomisiAgent = () => {
     onClose();
     // Refresh data dari server agar status berubah otomatis jadi 'menunggu verifikasi'
     fetchData(); 
-    toast({
-      title: "Berhasil",
-      description: "Bukti transfer berhasil dikirim. Menunggu verifikasi admin.",
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
   };
 
   return (
