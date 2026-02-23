@@ -48,18 +48,46 @@ def agent_dashboard_stats(request):
         return Response({"error": "Akses ditolak"}, status=403)
 
     user = request.user
-    # Ambil komisi unsettled untuk hitung tagihan yang belum dibayar
-    komisi_unsettled = KomisiAgen.objects.filter(agen=user, status='unsettled')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    # Ambil SEMUA riwayat komisi agen
+    komisi = KomisiAgen.objects.filter(agen=user)
     
-    total_tiket = komisi_unsettled.count()
-    total_komisi = komisi_unsettled.aggregate(Sum('jumlah_komisi'))['jumlah_komisi__sum'] or 0
+    # FILTER TANGGAL
+    if start_date:
+        komisi = komisi.filter(dibuat_pada__date__gte=start_date)
+    if end_date:
+        komisi = komisi.filter(dibuat_pada__date__lte=end_date)
+        
+    # DEFAULT HARI INI JIKA TIDAK ADA FILTER
+    if not start_date and not end_date:
+        hari_ini = timezone.now().date()
+        komisi = komisi.filter(dibuat_pada__date=hari_ini)
+        periode_text = "Hari Ini"
+    elif start_date == end_date:
+        periode_text = f"Tanggal {start_date}"
+    else:
+        periode_text = f"{start_date} s/d {end_date}"
     
-    # Hitung setoran = (Total Harga Tiket) - (Total Komisi)
-    total_kotor = sum([float(k.tiket.jadwal.harga) for k in komisi_unsettled])
+    # 👇 PERBAIKAN LOGIKA HITUNGAN DI SINI 👇
+    
+    # 1. Total Penumpang = Menghitung jumlah kursi (karena 1 row komisi = 1 kursi)
+    total_penumpang = komisi.count()
+    
+    # 2. Total Tiket (Transaksi) = Menghitung jumlah Struk/Pemesanan yang unik (tidak dobel)
+    total_tiket = komisi.values('tiket__pemesanan').distinct().count()
+    
+    # 3. Hitung Uang
+    total_komisi = komisi.aggregate(Sum('jumlah_komisi'))['jumlah_komisi__sum'] or 0
+    total_kotor = sum([float(k.tiket.jadwal.harga) for k in komisi])
     tagihan_setoran = total_kotor - float(total_komisi)
 
+    # Kirim ke React dengan 2 variabel berbeda
     return Response({
-        "tiket_aktif": total_tiket,
+        "periode": periode_text,
+        "tiket_aktif": total_tiket,         # Ini jumlah Struk/Transaksi
+        "total_penumpang": total_penumpang, # Ini jumlah Orang/Kursi
         "total_komisi_pending": total_komisi,
         "tagihan_setoran": tagihan_setoran
     })

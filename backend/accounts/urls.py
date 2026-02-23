@@ -1,6 +1,6 @@
 from django.urls import path
 from . import api_views 
-from .pdf_views import agent_ticket_pdf
+from .pdf_views import agent_ticket_pdf as download_pdf_views
 
 from .api import auth, user, agent, admin
 from .api.master_data import search_schedule
@@ -32,13 +32,14 @@ urlpatterns = [
     path("admin/validasi-setoran/<int:pk>/", admin.admin_validasi_setoran),
 
     # 3. AGENT FEATURES
+    path("agent/download-tiket-pdf/", download_pdf_views),
     path('agent/dashboard-stats/', agent.agent_dashboard_stats),
     path("agent/ticket-report/", agent.agent_ticket_report),
     path("agent/commission-report/", agent.agent_commission_report),
     path("agent/submit-transfer/", agent.agent_submit_transfer),
     path('agent/jadwal/', agent.agent_jadwal_list),
     path("agent/tickets/", agent.agent_ticket_list), 
-    path("agent/ticket-pdf/", agent_ticket_pdf),
+    
 
     # 4. REFACTORING & PUBLIC
     path('schedule/search/', search_schedule), 

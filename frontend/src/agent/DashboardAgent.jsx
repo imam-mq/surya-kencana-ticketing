@@ -123,10 +123,10 @@ const DashboardAgent = () => {
 
             setStats({
               periode: dataStats.periode || "Hari Ini",
-              tiketTerjual: (dataStats.tiket_terjual || 0).toString(),
+              tiketTerjual: (dataStats.tiket_aktif || 0).toString(),
               penumpangHariIni: (dataStats.total_penumpang || 0).toString(),
-              totalKomisi: formatter.format(dataStats.total_komisi || 0),
-              totalPembayaranAdmin: formatter.format(dataStats.setoran_ke_admin || 0)
+              totalKomisi: formatter.format(dataStats.total_komisi_pending || 0),
+              totalPembayaranAdmin: formatter.format(dataStats.tagihan_setoran || 0)
             });
           }
         }

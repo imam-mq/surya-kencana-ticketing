@@ -110,7 +110,7 @@ const TiketTerbit = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const res = await fetch(
-        `http://127.0.0.1:8000/api/accounts/agent/ticket-pdf/?ticket_id=${ticketId}`,
+        `http://127.0.0.1:8000/api/accounts/agent/download-tiket-pdf/?ticket_id=${ticketId}`,
         {
           credentials: "include",
         }

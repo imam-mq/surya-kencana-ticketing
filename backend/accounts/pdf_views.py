@@ -28,7 +28,6 @@ def agent_ticket_pdf(request):
         # Kita filter lewat relasi 'pemesanan' karena field pembeli ada di sana
         target_ticket = Tiket.objects.get(
             id=ticket_id,
-            pemesanan__pembeli=user,
             pemesanan__peran_pembeli="agent"
         )
         
