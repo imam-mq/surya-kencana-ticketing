@@ -18,12 +18,15 @@ import {
   Spinner,
   useToast
 } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
 import { HiSwitchHorizontal } from "react-icons/hi";
 import Sidebar_Agent from "./layout/Sidebar_Agent";
 import Agent_Navbar from "./layout/Agent_Navbar";
 import ModalTransfer from "../components/ui/ModalTransfer";
 
 const KomisiAgent = () => {
+  
+  const navigate = useNavigate();
   // State Filter Tanggal
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -121,6 +124,11 @@ const KomisiAgent = () => {
     fetchData(); 
   };
 
+  const handleDetailClick = (periodeId) => {
+    // Arahkan ke rute frontend beserta ID periodenya
+    navigate(`/agent/komisi/detailpriodeagent/${periodeId}`);
+  };
+
   return (
     <Flex minH="100vh" bg="gray.50">
       <Sidebar_Agent />
@@ -216,22 +224,30 @@ const KomisiAgent = () => {
 
                             {/* Tombol Aksi */}
                             <Td>
-                            {item.canTransfer ? (
-                                <Button
-                                size="sm"
-                                textColor="white"
-                                leftIcon={<HiSwitchHorizontal />}
-                                colorScheme="yellow" // Kuning Oranye agar mencolok
-                                onClick={() => handleTransferClick(item)}
-                                boxShadow="sm"
-                                >
-                                Transfer
-                                </Button>
-                            ) : (
-                                <Button size="sm" colorScheme="blue" variant="outline" isDisabled>
-                                Detail
-                                </Button>
-                            )}
+                              {
+                                item.canTransfer ? 
+                                (
+                                  <Button
+                                  size="sm"
+                                  textColor="white"
+                                  leftIcon={<HiSwitchHorizontal />}
+                                  colorScheme="yellow" // Kuning Oranye agar mencolok
+                                  onClick={() => handleTransferClick(item)}
+                                  boxShadow="sm"
+                                  >
+                                  Transfer
+                                  </Button>
+                                  ) : (
+                                    <Button 
+                                        size="sm" 
+                                        colorScheme="blue" 
+                                        variant="outline" 
+                                        onClick={() => handleDetailClick(item.id)}
+                                    >
+                                        Detail
+                                    </Button>
+                                )
+                              }
                             </Td>
                           </Tr>
                         ))

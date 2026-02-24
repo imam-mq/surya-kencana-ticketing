@@ -328,3 +328,57 @@ def agent_commission_report(request):
         })
 
     return Response(response_data)
+
+# ===================== DETAIL PERIODE AGENT =====================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def agent_periode_detail(request, periode_id):
+    # 1. Memastikan yang akses ini adalah agent
+    if not _is_agent(request.user): 
+        return Response({"error": "Akses ditolak"}, status=403)
+
+    user = request.user
+
+    # 2. Cari data PeriodeKomisi berdasarkan ID
+    periode = get_object_or_404(PeriodeKomisi, id=periode_id, agen=user)
+
+    # 3. Ambil detail tiket/penumpang yang masuk dalam periode ini
+    items = ItemPeriodeKomisi.objects.filter(periode=periode).select_related(
+        'tiket', 'tiket__jadwal', 'tiket__pemesanan'
+    )
+
+    # 4. Susun data penumpang untuk dikirim ke Frontend
+    detail_penumpang = []
+    for item in items:
+        tiket = item.tiket
+        jadwal = tiket.jadwal
+        
+        waktu_berangkat = "-"
+        if jadwal.waktu_keberangkatan:
+            waktu_berangkat = jadwal.waktu_keberangkatan.strftime('%d %b %Y %H:%M')
+
+        detail_penumpang.append({
+            "kode_tiket": tiket.kode_tiket,
+            "nama_penumpang": tiket.nama_penumpang,
+            "nomor_kursi": tiket.nomor_kursi,
+            "rute": f"{jadwal.asal} - {jadwal.tujuan}",
+            "waktu_berangkat": waktu_berangkat,
+            "harga_tiket": float(jadwal.harga),
+            "komisi_agen": float(item.jumlah_komisi)
+        })
+
+    # 5. Menggabungkan informasi ringkasan periode dan daftar penumpang
+    response_data = {
+        "informasi_periode": {
+            "id": periode.id,
+            "periode_awal": periode.tanggal_mulai.strftime('%d %b %Y'),
+            "periode_akhir": periode.tanggal_selesai.strftime('%d %b %Y'),
+            "status": periode.status,
+            "total_kursi": periode.total_transaksi,
+            "total_komisi": float(periode.total_komisi),
+            "total_setor": float(periode.total_setor),
+        },
+        "daftar_penumpang": detail_penumpang
+    }
+
+    return Response(response_data)

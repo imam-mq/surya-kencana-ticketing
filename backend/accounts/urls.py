@@ -39,6 +39,7 @@ urlpatterns = [
     path("agent/submit-transfer/", agent.agent_submit_transfer),
     path('agent/jadwal/', agent.agent_jadwal_list),
     path("agent/tickets/", agent.agent_ticket_list), 
+    path('agent/periode/<int:periode_id>/detail/', agent.agent_periode_detail, name='agent_periode_detail'),
     
 
     # 4. REFACTORING & PUBLIC

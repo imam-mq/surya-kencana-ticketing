@@ -47,7 +47,7 @@ import TiketAgent from "./agent/TiketAgent";
 import TiketTerbit from "./agent/TiketTerbit";
 import KomisiLaporan from "./agent/KomisiLaporan";
 import KomisiAgent from "./agent/KomisiAgent";
-import DetailKomisiAgent from "./agent/DetailKomisiAgent";
+import DetailPeriodeAgent from './agent/komisi/detailpriodeagent';
 
 function App() {
   return (
@@ -90,7 +90,7 @@ function App() {
       <Route path="/agent/tiketterbit" element={<TiketTerbit />} />
       <Route path="/agent/komisilaporan" element={<KomisiLaporan />} />
       <Route path="/agent/komisiagent" element={<KomisiAgent />} />
-      <Route path="/agent/DetailKomisiAgent/:id" element={<DetailKomisiAgent />} />
+      <Route path="/agent/komisi/detailpriodeagent/:id" element={<DetailPeriodeAgent />} />
 
       {/* User */}
       <Route path="/user" element={<DashboardUser />}>
