@@ -163,11 +163,12 @@ class AgentTicketHistorySerializer(serializers.ModelSerializer):
     destination = serializers.CharField(source='jadwal.tujuan', read_only=True)
     passenger_names = serializers.SerializerMethodField()
     seats = serializers.SerializerMethodField()
+    tanggal_transaksi = serializers.SerializerMethodField()
 
     class Meta:
         model = Pemesanan
         fields = [
-            'id', 'bus_name', 'bus_code', 'departure_date', 'departure_time', 
+            'id', 'tanggal_transaksi', 'bus_name', 'bus_code', 'departure_date', 'departure_time', 
             'origin', 'destination', 'passenger_names', 'seats', 'status_pembayaran'
         ]
 
@@ -182,6 +183,9 @@ class AgentTicketHistorySerializer(serializers.ModelSerializer):
 
     def get_seats(self, obj):
         return [t.nomor_kursi for t in obj.tiket.all()]
+    
+    def get_tanggal_transaksi(self, obj):
+        return obj.dibuat_pada.strftime('%d %b %Y %H:%M')
 
 
 

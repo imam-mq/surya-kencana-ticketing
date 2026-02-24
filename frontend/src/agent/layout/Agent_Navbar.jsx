@@ -47,7 +47,7 @@ const Agent_Navbar = () => {
     }
   };
   return (
-    <header className="bg-[#1e3a8a] text-white flex justify-between items-center px-4 py-2">
+    <header className="sticky top-0 z-50 bg-[#1e3a8a] text-white flex justify-between items-center px-4 py-2 shadow-md">
       <div className="flex items-center gap-2">
         <Menu />
         <h1 className="font-bold text-lg">Ticketing</h1>

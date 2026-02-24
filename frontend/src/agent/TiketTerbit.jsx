@@ -70,10 +70,12 @@ const TiketTerbit = () => {
         const mappedTickets = data.map((item, index) => ({
             no: index + 1,
             id: item.id,
+            tanggal_transaksi: item.tanggal_transaksi,
             tipeRis: `${item.bus_name} ${item.bus_code ?? ""}`,
             jam: item.departure_time?.slice(0, 5),
             jadwal: item.departure_date,
-            rute: `${item.origin} - ${item.destination}`,
+            asal: item.origin,
+            tujuan: item.destination,
             penumpang: item.passenger_names?.join(", "),
             seats: item.seats.join(", "),
             status: "Berhasil",
@@ -89,7 +91,7 @@ const TiketTerbit = () => {
   }, []);
 
   const filtered = tickets.filter((ticket) =>
-  `${ticket.penumpang} ${ticket.tipeRis} ${ticket.rute}`
+  `${ticket.penumpang} ${ticket.tipeRis} ${ticket.asal} ${ticket.tujuan}`
     .toLowerCase()
     .includes(searchTerm.toLowerCase())
   );
@@ -224,6 +226,9 @@ const TiketTerbit = () => {
                       No
                     </th>
                     <th className="py-3 px-6 text-left text-sm font-semibold text-gray-900">
+                      Tanggal Transaksi
+                    </th>
+                    <th className="py-3 px-6 text-left text-sm font-semibold text-gray-900">
                       Nama Penumpang
                     </th>
                     <th className="py-3 px-6 text-left text-sm font-semibold text-gray-900">
@@ -236,7 +241,10 @@ const TiketTerbit = () => {
                       Jadwal
                     </th>
                     <th className="py-3 px-6 text-left text-sm font-semibold text-gray-900">
-                      Rute
+                      Keberangkatan
+                    </th>
+                    <th className="py-3 px-6 text-left text-sm font-semibold text-gray-900">
+                      Kedatangan
                     </th>
                     <th className="py-3 px-6 text-left text-sm font-semibold text-gray-900">
                       Status
@@ -253,6 +261,9 @@ const TiketTerbit = () => {
                         {ticket.no}
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-900">
+                        {ticket.tanggal_transaksi}
+                      </td>
+                      <td className="py-4 px-6 text-sm text-gray-900">
                         {ticket.penumpang}
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-900">
@@ -267,7 +278,10 @@ const TiketTerbit = () => {
                         </span>
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-900">
-                        {ticket.rute}
+                        {ticket.asal}
+                      </td>
+                      <td className="py-4 px-6 text-sm text-gray-900">
+                        {ticket.tujuan}
                       </td>
                       <td className="py-4 px-6">
                         <span className="inline-flex items-center px-3 py-1 rounded text-xs font-medium bg-green-100 text-green-700">

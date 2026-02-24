@@ -15,7 +15,7 @@ const sidebarBgColor = '#1e3a8a';
 const activeBgColor = '#2b3951';
 
   return (
-    <div className="w-64 text-white min-h-screen" style={{ backgroundColor: sidebarBgColor }}>
+    <div className="w-64 text-white sticky top-0 h-screen overflow-y-auto" style={{ backgroundColor: sidebarBgColor }}>
       <div className="p-4 pt-6 pb-2 font-bold text-xl border-b border-white/10 mb-4">
         <span className="block">Surya Kencana</span>
         
