@@ -9,6 +9,7 @@ from .api.booking import create_booking_agent
 urlpatterns = [
     # 1. AUTHENTICATION (Pastikan pakai prefix 'auth.')
     path('login-admin-api/', auth.login_admin_api, name='login_admin_api'),
+    path('logout-admin/', auth.logout_admin),
     path('login-agent/', auth.login_agent),
     path('login-user/', auth.login_user),
     path('auth/check-session/', auth.check_session),

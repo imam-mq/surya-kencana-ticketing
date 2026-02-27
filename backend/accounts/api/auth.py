@@ -142,3 +142,4 @@ def logout_all(request):
 
 logout_agent = logout_all
 logout_user = logout_all
+logout_admin = logout_all
