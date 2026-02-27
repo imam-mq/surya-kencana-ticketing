@@ -45,17 +45,20 @@ const SidebarUser = () => {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-
-      {/* ── Logo / Brand ── */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-        <div className="bg-yellow-400 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-          <span className="text-blue-900 font-extrabold text-sm tracking-tight">SK</span>
+      
+      {/* ── Logo Section (Desktop Only) ── */}
+      <div className="hidden lg:flex items-center gap-3 px-4 py-5 border-b border-white/10">
+        <div className="bg-yellow-400 w-10 h-10 rounded-lg flex items-center justify-center shadow-md">
+          <span className="text-blue-900 font-extrabold text-base">SK</span>
         </div>
-        <span className="text-white font-bold text-base tracking-wide">Surya Kencana</span>
+        <div className="flex flex-col">
+          <span className="text-white font-bold text-base leading-tight">Surya Kencana</span>
+          <span className="text-white/60 text-xs">Transport Service</span>
+        </div>
       </div>
 
       {/* ── Menu Items ── */}
-      <nav className="flex flex-col gap-1 px-3 pt-4 flex-1">
+      <nav className="flex flex-col gap-1 px-3 pt-4 flex-1 overflow-y-auto">
         {menuItems.map((item) => {
           const isActive = activeMenu === item.key;
           return (
@@ -78,8 +81,8 @@ const SidebarUser = () => {
         })}
       </nav>
 
-      {/* ── Logout ── */}
-      <div className="px-3 pb-5 pt-2 border-t border-white/10 mt-4">
+      {/* ── Logout Button ── */}
+      <div className="px-3 pb-4 pt-3 border-t border-white/10 mt-auto">
         <button
           onClick={() => { setIsOpen(false); handleLogout(); }}
           className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-red-500/20 hover:text-red-300 transition-all duration-150"
@@ -123,10 +126,16 @@ const SidebarUser = () => {
 
       {/* ── Sidebar ── */}
       <div
-        className={`fixed lg:static top-14 lg:top-0 left-0 w-[240px] h-full lg:h-full shadow-xl transition-transform duration-300 z-40 lg:z-0 flex flex-col ${
+        className={`fixed lg:static top-14 lg:top-0 left-0 w-[240px] shadow-xl transition-transform duration-300 z-40 lg:z-0 flex flex-col ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
-        style={{ backgroundColor: primaryColor }}
+        style={{ 
+          backgroundColor: primaryColor,
+          height: 'calc(100vh - 56px)', // Mobile: 100vh - topbar height
+          '@media (min-width: 1024px)': {
+            height: '100vh' // Desktop: full height
+          }
+        }}
       >
         <SidebarContent />
       </div>
