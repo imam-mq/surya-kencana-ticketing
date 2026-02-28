@@ -82,7 +82,7 @@ const SidebarUser = () => {
       </nav>
 
       {/* ── Logout Button ── */}
-      <div className="px-3 pb-4 pt-3 border-t border-white/10 mt-auto">
+      <div className="px-3 pb-2 pt-3 border-t border-white/10 mt-auto">
         <button
           onClick={() => { setIsOpen(false); handleLogout(); }}
           className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white/80 hover:bg-red-500/20 hover:text-red-300 transition-all duration-150"
@@ -124,18 +124,11 @@ const SidebarUser = () => {
         />
       )}
 
-      {/* ── Sidebar ── */}
       <div
-        className={`fixed lg:static top-14 lg:top-0 left-0 w-[240px] shadow-xl transition-transform duration-300 z-40 lg:z-0 flex flex-col ${
+        className={`fixed lg:static top-14 lg:top-0 left-0 w-[240px] h-[calc(100vh-56px)] lg:h-screen shadow-xl transition-transform duration-300 z-40 lg:z-0 flex flex-col ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
-        style={{ 
-          backgroundColor: primaryColor,
-          height: 'calc(100vh - 56px)', // Mobile: 100vh - topbar height
-          '@media (min-width: 1024px)': {
-            height: '100vh' // Desktop: full height
-          }
-        }}
+        style={{ backgroundColor: primaryColor }}
       >
         <SidebarContent />
       </div>
