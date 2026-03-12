@@ -7,7 +7,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
-# IMPORT MODEL BARU (SESUAI ERD)
+
 from accounts.models import (
     Pengguna, Bus, Jadwal, Promosi, 
     Pemesanan, Tiket, PeriodeKomisi, TransferKomisi

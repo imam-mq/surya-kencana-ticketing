@@ -14,12 +14,16 @@ class PenggunaSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'nama_lengkap', 'telepon', 'peran', 'status']
 
-# 🔥 PERBAIKAN UTAMA DI SINI 🔥
+
 class AgentSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         # Kita tambahkan 'password' dan 'peran' agar bisa diinput
-        fields = ['id', 'username', 'email', 'nama_lengkap', 'telepon', 'alamat', 'password', 'peran']
+        fields = [
+            'id', 'username', 'email', 'nama_lengkap', 'telepon', 
+            'alamat', 'no_ktp', 'jenis_kelamin', 'kota_kab', 
+            'password', 'peran'
+        ]
         extra_kwargs = {
             'password': {'write_only': True, 'required': False}, # Password tidak akan tampil saat di-GET
             'id': {'read_only': True}

@@ -10,14 +10,16 @@ const API_BASE = "http://127.0.0.1:8000";
 // ===============================
 const AgentFormModal = ({ visible, mode = "create", initial = {}, onClose, onSaved }) => {
   const [form, setForm] = useState({
-    username: "", 
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    location: "",
-    password: "",
-    password_confirm: "",
+    username: '',
+    email: '',
+    nama_lengkap: '',
+    telepon: '',
+    alamat: '',
+    no_ktp: '',
+    jenis_kelamin: '',
+    kota_kab: '',
+    password: '',
+    password_confirm: ''
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -65,9 +67,12 @@ const AgentFormModal = ({ visible, mode = "create", initial = {}, onClose, onSav
       const payload = {
         username: form.username,
         email: form.email,
-        nama_lengkap: `${form.first_name} ${form.last_name}`.trim(),
-        telepon: form.phone,
-        alamat: form.location,
+        nama_lengkap: form.nama_lengkap,
+        telepon: form.telepon,
+        alamat: form.alamat,
+        no_ktp: form.no_ktp,
+        jenis_kelamin: form.jenis_kelamin,
+        kota_kab: form.kota_kab,
       };
 
       if (mode === "create") {
@@ -120,14 +125,24 @@ const AgentFormModal = ({ visible, mode = "create", initial = {}, onClose, onSav
         {error && <div className="mb-3 p-2 bg-red-100 text-sm text-red-600 rounded">{error}</div>}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input name="username" value={form.username} onChange={onChange} placeholder="Username (Login)" className="border rounded px-3 py-2" disabled={mode === 'edit'} />
+          <input name="username" value={form.username} onChange={onChange} placeholder="Username" className="border rounded px-3 py-2" disabled={mode === 'edit'} />
           <input name="email" value={form.email} onChange={onChange} placeholder="Email" type="email" className="border rounded px-3 py-2" />
           
-          <input name="first_name" value={form.first_name} onChange={onChange} placeholder="Nama Depan" className="border rounded px-3 py-2" />
-          <input name="last_name" value={form.last_name} onChange={onChange} placeholder="Nama Belakang" className="border rounded px-3 py-2" />
+          {/* PERBAIKAN: Menggunakan nama_lengkap (menggantikan first_name & last_name) */}
+          <input name="nama_lengkap" value={form.nama_lengkap} onChange={onChange} placeholder="Nama Lengkap" className="border rounded px-3 py-2 md:col-span-2" />
           
-          <input name="phone" value={form.phone} onChange={onChange} placeholder="Nomor Telepon" className="border rounded px-3 py-2" />
-          <input name="location" value={form.location} onChange={onChange} placeholder="Alamat / Lokasi" className="border rounded px-3 py-2" />
+          {/* PERBAIKAN: phone jadi telepon, location jadi alamat */}
+          <input name="telepon" value={form.telepon} onChange={onChange} placeholder="Nomor Telepon" className="border rounded px-3 py-2" />
+          <input name="alamat" value={form.alamat} onChange={onChange} placeholder="Alamat / Lokasi" className="border rounded px-3 py-2" />
+          
+          {/* TAMBAHAN: Field KTP, Jenis Kelamin, dan Kota/Kab */}
+          <input name="no_ktp" value={form.no_ktp} onChange={onChange} placeholder="Nomor KTP" className="border rounded px-3 py-2" />
+          <select name="jenis_kelamin" value={form.jenis_kelamin} onChange={onChange} className="border rounded px-3 py-2 bg-white">
+            <option value="">Pilih Jenis Kelamin</option>
+            <option value="L">Laki-laki</option>
+            <option value="P">Perempuan</option>
+          </select>
+          <input name="kota_kab" value={form.kota_kab} onChange={onChange} placeholder="Kota / Kabupaten" className="border rounded px-3 py-2 md:col-span-2" />
           
           <div className="col-span-1 md:col-span-2 mt-2 border-t pt-2">
             <p className="text-sm text-gray-500 mb-2">{mode === "create" ? "Set Password" : "Ubah Password (Kosongkan jika tidak ingin mengubah)"}</p>
