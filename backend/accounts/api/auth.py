@@ -44,23 +44,26 @@ def register_user(request):
 # ==========================================
 # 2. LOGIN ADMIN (PERBAIKAN UTAMA)
 # ==========================================
-@api_view(['POST'])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_POST
 def login_admin_api(request):
-    email = request.data.get('email')
-    password = request.data.get('password')
-    
-    # PERBAIKAN: Gunakan 'username=email'
-    user = authenticate(request, username=email, password=password)
-    
-    if user is not None and user.peran == 'admin':
-        login(request, user)
-        return Response({
-            "success": True, 
-            "peran": user.peran, 
-            "nama": user.nama_lengkap
-        })
-    return Response({"success": False, "message": "Email atau Password Admin salah"}, status=401)
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        email = data.get('email')
+        password = data.get('password')
+
+        user = authenticate(request, username=email, password=password)
+        if user is not None and getattr(user, "peran", None) == 'admin':
+            login(request, user)
+            return JsonResponse({
+                "success": True,
+                "message": "Login Berhasil", 
+                "peran": user.peran, 
+                "nama": user.nama_lengkap
+            })
+        return JsonResponse({"success": False, "message": "Email atau Password Admin salah"}, status=401)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 # ==========================================
 # 3. LOGIN AGENT (PERBAIKAN UTAMA)
@@ -83,6 +86,7 @@ def login_agent(request):
         return JsonResponse({
             "success": True, 
             "id": user.id, 
+            "message": "Login Berhasil",
             "email": user.email, 
             "username": user.username, 
             "peran": user.peran
