@@ -81,17 +81,17 @@ const AgentFormModal = ({ visible, mode = "create", initial = {}, onClose, onSav
 
       const url = mode === "create"
         ? `${API_BASE}/api/accounts/agents/add/`
-        : `${API_BASE}/api/accounts/agents/${initial.id}/update/`; // Pastikan endpoint update ada jika ingin edit
+        : `${API_BASE}/api/accounts/agents/${initial.id}/update/`;
 
       const method = mode === "create" ? "POST" : "PUT";
 
-      // 🟡 PERBAIKAN: Gunakan credentials: 'include' agar Cookie terkirim
+      
       const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // <--- PENTING: Untuk mengirim Session Cookie
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
@@ -161,9 +161,8 @@ const AgentFormModal = ({ visible, mode = "create", initial = {}, onClose, onSav
   );
 };
 
-// ===============================
+
 // 2. SUB-KOMPONEN: MODAL DETAIL
-// ===============================
 const AgentDetailModal = ({ visible, agent, onClose }) => {
   if (!visible || !agent) return null;
 

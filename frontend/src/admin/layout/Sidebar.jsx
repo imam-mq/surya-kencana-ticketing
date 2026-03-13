@@ -1,45 +1,95 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard } from "lucide-react";
-import { FaTachometerAlt, FaUsers, FaBus, FaCalendarAlt, FaTicketAlt, FaTag, FaDollarSign, FaChartBar } from 'react-icons/fa';
+import {
+  FaTachometerAlt,
+  FaUsers,
+  FaBus,
+  FaCalendarAlt,
+  FaTag,
+  FaChartBar,
+} from "react-icons/fa";
 
 const Sidebar = () => {
   const menu = [
-  { name: "Dashboard", icon: <FaTachometerAlt size={18} />, path: "/admin/dashboard" },
-  { name: "Managemen User", icon: <FaUsers size={18} />, path: "/admin/manajemenuser" },
-  { name: "Managemen Agent", icon: <FaBus size={18} />, path: "/admin/manajemenagent" },
-  { name: "Managemen Jadwal & Tiket", icon: <FaCalendarAlt size={18} />, path: "/admin/jadwaltiket" },
-  { name: "Managemen Promo", icon: <FaTag size={18} />, path: "/admin/manajemenpromo" },
-  { name: "Laporan & Monitoring", icon: <FaChartBar size={18} />, path: "/admin/laporanmonitoring" },
-];
-
-const sidebarBgColor = '#1e3a8a';
-const activeBgColor = '#2b3951';
+    { name: "Dashboard",               icon: <FaTachometerAlt size={16} />, path: "/admin/dashboard" },
+    { name: "Managemen User",          icon: <FaUsers size={16} />,         path: "/admin/manajemenuser" },
+    { name: "Managemen Agent",         icon: <FaBus size={16} />,           path: "/admin/manajemenagent" },
+    { name: "Managemen Jadwal & Tiket",icon: <FaCalendarAlt size={16} />,   path: "/admin/jadwaltiket" },
+    { name: "Managemen Promo",         icon: <FaTag size={16} />,           path: "/admin/manajemenpromo" },
+    { name: "Laporan & Monitoring",    icon: <FaChartBar size={16} />,      path: "/admin/laporanmonitoring" },
+  ];
 
   return (
-    <div className="w-64 text-white min-h-screen" style={{ backgroundColor: sidebarBgColor }}>
-      <div className="p-4 pt-6 pb-2 font-bold text-xl border-b border-white/10 mb-4">
-        <span className="block">Surya</span>
-        <span className="block">Kencana</span>
+    <div
+      className="w-64 text-white sticky top-0 h-screen overflow-y-auto flex flex-col"
+      style={{
+        backgroundColor: "#1e3a8a",
+        backgroundImage: "linear-gradient(180deg, #1e3a8a 0%, #1a3278 100%)",
+        boxShadow: "4px 0 20px rgba(0,0,0,0.25)",
+      }}
+    >
+      {/* Logo / Brand */}
+      <div className="px-6 py-5 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black"
+            style={{
+              background: "rgba(255,255,255,0.15)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2)",
+              flexShrink: 0,
+            }}
+          >
+            SK
+          </div>
+          <div>
+            <span className="block font-bold text-base leading-tight tracking-wide">
+              Surya Kencana
+            </span>
+            <span className="block text-xs text-white/50 tracking-widest uppercase">
+              Admin Panel
+            </span>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex flex-col px-4">
+      {/* Navigation */}
+      <nav className="flex flex-col px-3 py-4 gap-0.5 flex-1">
+        <p className="text-[10px] uppercase tracking-widest text-white/35 px-3 mb-2 font-semibold">
+          Menu
+        </p>
         {menu.map((item) => (
           <NavLink
             key={item.name}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center text-sm font-medium transition duration-200 px-4 py-3 my-1 rounded-md ${
-                isActive 
-                ? "bg-[${activeBgColor}] shadow-inner border-l-4 border-white" 
-                : "hover:bg-[${activeBgColor}]"
+              `flex items-center gap-3 text-sm font-medium transition-all duration-200 px-3 py-2.5 rounded-lg ${
+                isActive ? "text-white" : "text-white/60 hover:text-white"
               }`
             }
+            style={({ isActive }) =>
+              isActive
+                ? {
+                    background: "rgba(255,255,255,0.12)",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.2)",
+                    borderLeft: "3px solid rgba(255,255,255,0.7)",
+                  }
+                : {
+                    borderLeft: "3px solid transparent",
+                  }
+            }
           >
-            <span className="mr-3">{item.icon}</span>
-            <span>{item.name}</span>
+            <span className="opacity-80 shrink-0">{item.icon}</span>
+            <span className="leading-tight">{item.name}</span>
           </NavLink>
         ))}
       </nav>
+
+      {/* Footer */}
+      <div className="px-5 py-4 border-t border-white/10">
+        <p className="text-[10px] text-white/30 text-center">
+          v1.0.0 &copy; Surya Kencana
+        </p>
+      </div>
     </div>
   );
 };

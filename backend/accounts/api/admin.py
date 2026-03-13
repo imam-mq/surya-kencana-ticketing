@@ -119,7 +119,8 @@ def admin_jadwal_list_create(request):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def admin_jadwal_detail(request, pk):
-    if not is_admin(request.user):
+    # Gunakan helper is_admin (pastikan helper ini ada di atas file admin.py Abang)
+    if getattr(request.user, "peran", None) != "admin":
         return Response({"error": "Unauthorized"}, status=403)
 
     jadwal = get_object_or_404(Jadwal, pk=pk)
@@ -137,6 +138,60 @@ def admin_jadwal_detail(request, pk):
     elif request.method == 'DELETE':
         jadwal.delete()
         return Response({"message": "Jadwal berhasil dihapus"}, status=204)
+    
+@api_view(['GET'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def admin_detail_jadwal_penumpang(request, pk):
+    if getattr(request.user, "peran", None) != "admin":
+        return Response({"error": "Akses ditolak"}, status=403)
+
+    jadwal = get_object_or_404(Jadwal, pk=pk)
+    
+    # 🔴 PERBAIKAN: Membaca jumlah kursi dari tabel Bus secara otomatis
+    kapasitas = jadwal.bus.total_kursi if hasattr(jadwal, 'bus') and jadwal.bus else 0
+    tiket_terjual = Tiket.objects.filter(jadwal=jadwal).count()
+    kursi_tersedia = kapasitas - tiket_terjual
+
+    info_jadwal = {
+        "id": jadwal.id,
+        "rute_asal": jadwal.asal,
+        "rute_tujuan": jadwal.tujuan,
+        "nama_bus": f"{jadwal.bus.nama} [{jadwal.bus.tipe}]" if hasattr(jadwal, 'bus') and jadwal.bus else "-",
+        "waktu_keberangkatan": jadwal.waktu_keberangkatan.strftime("%H.%M WITA"),
+        "harga_tiket": float(jadwal.harga),
+        "status": "Active",
+        "kapasitas": kapasitas, # Sekarang dinamis sesuai tabel Bus!
+        "kursi_tersedia": kursi_tersedia,
+        "tiket_terjual": tiket_terjual
+    }
+
+    tikets = Tiket.objects.filter(jadwal=jadwal).select_related('pemesanan__pembeli').order_by('nomor_kursi')
+    
+    penumpang_list = []
+    for t in tikets:
+        pemesanan = getattr(t, 'pemesanan', None)
+        pembeli = getattr(pemesanan, 'pembeli', None) if pemesanan else None
+        
+        dibeli_oleh = "User"
+        if pembeli:
+            peran = getattr(pembeli, 'peran', 'user')
+            dibeli_oleh = "Agent" if peran == 'agent' else "User"
+
+        penumpang_list.append({
+            "id": t.id,
+            "nama_penumpang": t.nama_penumpang,
+            "kursi": t.nomor_kursi,
+            "harga": float(jadwal.harga),
+            "status": pemesanan.status_pembayaran.capitalize() if pemesanan and hasattr(pemesanan, 'status_pembayaran') else "Success",
+            "dibeli_oleh": dibeli_oleh,
+            "waktu_beli": pemesanan.dibuat_pada.strftime("%d %b %Y %H.%M") if pemesanan and hasattr(pemesanan, 'dibuat_pada') else "-"
+        })
+
+    return Response({
+        "jadwal": info_jadwal,
+        "penumpang": penumpang_list
+    })
 
 # ================= 4. MANAJEMEN PROMO =================
 
