@@ -1,4 +1,3 @@
-// Tiket.jsx — Fix: recognize sleeper payload even if trip.bus.is_sleeper mismatch
 import React, { useEffect, useState } from "react";
 import { FaBus, FaCalendarAlt, FaArrowRight } from "react-icons/fa";
 import LogoSK1 from "../images/SK-Logo1.png";
@@ -8,26 +7,37 @@ import SeatGridSleeper from "./kursi/SeatGridSleeper";
 const API = "http://127.0.0.1:8000/api/accounts";
 
 const TripCard = ({ trip, onToggleOpen }) => {
-  const busName = trip.bus ? trip.bus.name : trip.title || "-";
-  const busCode = trip.bus?.code || "";
+  // variabel dengan serializer
+  const busName = trip.bus_name || "Bus Dihapus";
+  const busCode = trip.bus_type || "";
 
-  const availableSeats = Math.max(0, (trip.capacity ?? 0) - (trip.sold_seats ?? 0));
-  const occupancyRate = Math.min(
-    100,
-    Math.round(((trip.sold_seats ?? 0) / (trip.capacity || 1)) * 100)
-  );
+  const capacity = trip.kapasitas || 28;
+  const sold = trip.terjual || 0;
+  const availableSeats = Math.max(0, capacity - sold);
+  const occupancyRate = Math.min(100, Math.round((sold / capacity) * 100));
+
+  // Datetime dari Backend
+  const dateObj = trip.waktu_keberangkatan ? new Date(trip.waktu_keberangkatan) : new Date();
+  const dateStr = dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const timeStr = dateObj.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+  // mengecek apakah tiket penuh
+  const isFull = availableSeats === 0 || trip.status === "sold_out";
 
   return (
-    <div className="bg-white rounded-lg shadow-sm hover:shadow-md border border-gray-200 transition-all duration-300 overflow-hidden cursor-pointer" onClick={() => onToggleOpen(trip.id)}>
+    <div 
+      className={`bg-white rounded-lg shadow-sm border ${isFull ? 'border-red-200 opacity-90' : 'border-gray-200 hover:shadow-md'} transition-all duration-300 overflow-hidden ${isFull ? 'cursor-not-allowed' : 'cursor-pointer'}`} 
+      onClick={() => !isFull && onToggleOpen(trip.id)}
+    >
       <div className="flex flex-col md:flex-row md:items-center justify-between p-5 gap-4">
         
         {/* Bagian Kiri - Info Bus */}
-        <div className="flex items-center gap-3 min-w-[180px] mt-[-30px]">
+        <div className="flex items-center gap-3 min-w-[180px] md:mt-[-10px]">
           <img src={LogoSK1} alt="logo" className="w-12 h-12 object-contain" />
           <div>
             <h3 className="font-bold text-gray-900 text-sm md:text-base">{busName}</h3>
             {busCode && (
-              <p className="text-sm text-black-900 mt-0.5 font-semibold">{busCode}</p>
+              <p className="text-sm text-gray-600 mt-0.5 font-semibold">{busCode}</p>
             )}
           </div>
         </div>
@@ -36,35 +46,37 @@ const TripCard = ({ trip, onToggleOpen }) => {
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase">Keberangkatan</h4>
-            <p className="text-sm font-semibold text-gray-900">{trip.time?.slice(0, 5)}</p>
-            <p className="text-xs text-gray-600 line-clamp-2">{trip.origin}</p>
-            <p className="text-xs text-gray-500">{trip.date}</p>
+            <p className="text-sm font-semibold text-gray-900">{timeStr} WITA</p>
+            <p className="text-xs text-gray-600 line-clamp-2">{trip.asal}</p>
+            <p className="text-xs text-blue-600 font-medium">{dateStr}</p>
           </div>
 
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase">Kedatangan</h4>
-            <p className="text-sm font-semibold text-gray-900 line-clamp-2">{trip.destination}</p>
+            <p className="text-sm font-semibold text-gray-900 line-clamp-2">{trip.tujuan}</p>
           </div>
 
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase">Harga</h4>
-            <p className="text-base font-bold text-blue-600">
-              Rp {Number(trip.price || 0).toLocaleString("id-ID")}
+            <p className={`text-base font-bold ${isFull ? 'text-gray-400 line-through' : 'text-blue-600'}`}>
+              Rp {Number(trip.harga || 0).toLocaleString("id-ID")}
             </p>
           </div>
         </div>
 
         {/* Kanan - Kursi & Tombol */}
-        <div className="flex flex-col items-center gap-2 min-w-[100px]">
+        <div className="flex flex-col items-center gap-2 min-w-[120px]">
           <div className="text-center">
-            <p className="text-sm font-bold text-gray-900">{availableSeats}</p>
+            <p className={`text-sm font-bold ${isFull ? 'text-red-600' : 'text-gray-900'}`}>{availableSeats}</p>
             <p className="text-xs text-gray-500">Kursi Tersedia</p>
           </div>
 
-          <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
-                occupancyRate >= 80
+                isFull
+                  ? "bg-red-600"
+                  : occupancyRate >= 80
                   ? "bg-red-500"
                   : occupancyRate >= 50
                   ? "bg-yellow-500"
@@ -75,13 +87,18 @@ const TripCard = ({ trip, onToggleOpen }) => {
           </div>
 
           <button
+            disabled={isFull}
             onClick={(e) => {
               e.stopPropagation();
               onToggleOpen(trip.id);
             }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
+            className={`w-full font-semibold py-2 px-3 rounded-lg text-xs transition ${
+              isFull 
+                ? 'bg-red-50 text-red-500 cursor-not-allowed border border-red-200' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
           >
-            Lihat Tempat Duduk
+            {isFull ? "Tiket Habis" : "Pilih Kursi"}
           </button>
         </div>
 
@@ -101,8 +118,6 @@ const Tiket = () => {
   const [seatsMap, setSeatsMap] = useState({});
   const [selectedSeatsMap, setSelectedSeatsMap] = useState({});
 
-  
-
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
@@ -121,10 +136,12 @@ const Tiket = () => {
     try {
       setErr(""); setLoading(true);
       const params = new URLSearchParams();
-      if (filters.origin) params.append("origin", filters.origin);
-      if (filters.destination) params.append("destination", filters.destination);
-      if (filters.date) params.append("date", filters.date);
-      const res = await fetch(`${API}/jadwal/search/?${params.toString()}`);
+      
+      if (filters.origin) params.append("asal", filters.origin);
+      if (filters.destination) params.append("tujuan", filters.destination);
+      if (filters.date) params.append("tanggal", filters.date);
+      
+      const res = await fetch(`${API}/jadwal/?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setTrips(Array.isArray(data) ? data : []);
@@ -132,14 +149,12 @@ const Tiket = () => {
     } catch (e) { setErr(e.message || "Gagal memuat jadwal"); } finally { setLoading(false); }
   };
 
-  // fetch seats — improved: detect sleeper payload from response regardless of trip.bus flag
   const fetchAndStoreSeats = async (tripId, isSleeperFlag) => {
     try {
       const res = await fetch(`${API}/jadwal/${tripId}/seats/`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
-      // If backend returned sleeper structure (even if trip.bus flag mismatches), treat as sleeper
       const looksLikeSleeper = data && (data.lantai_atas || data.lantai_bawah);
 
       if (isSleeperFlag || looksLikeSleeper) {
@@ -151,9 +166,7 @@ const Tiket = () => {
         return;
       }
 
-      // inline expected array
       if (!Array.isArray(data)) {
-        console.error("Inline expected array but got:", data);
         setSeatsMap(prev => ({ ...prev, [tripId]: [] }));
         setSelectedSeatsMap(prev => ({ ...prev, [tripId]: [] }));
         return;
@@ -173,7 +186,8 @@ const Tiket = () => {
     if (openTripId === tripId) { setOpenTripId(null); return; }
     setOpenTripId(tripId);
     const trip = trips.find(t => t.id === tripId);
-    const isSleeper = !!trip?.bus?.is_sleeper;
+    const isSleeper = trip?.bus_type?.toLowerCase().includes('sleeper');
+    
     if (!seatsMap[tripId]) await fetchAndStoreSeats(tripId, isSleeper);
     setTimeout(() => { const el = document.getElementById(`seat-panel-${tripId}`); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 80);
   };
@@ -204,7 +218,7 @@ const Tiket = () => {
   const handleProceed = (trip) => {
     const seats = selectedSeatsMap[trip.id] || [];
     if (!seats.length) return alert('Silakan pilih kursi terlebih dahulu');
-    alert(`Lanjut ke pembayaran.\nJadwal #${trip.id}\nKursi: ${seats.join(', ')}\nTotal: Rp ${(seats.length * Number(trip.price || 0)).toLocaleString('id-ID')}`);
+    alert(`Lanjut ke pembayaran.\nJadwal #${trip.id}\nKursi: ${seats.join(', ')}\nTotal: Rp ${(seats.length * Number(trip.harga || 0)).toLocaleString('id-ID')}`);
   };
 
   return (
@@ -214,12 +228,11 @@ const Tiket = () => {
           <span className="text-blue-600 font-medium">Beranda</span> / <span className="text-blue-600 font-medium">Ticket</span> / <span className="text-gray-800 font-semibold">Pencarian Jadwal</span>
         </div>
 
-        <h2 className="text-2xl font-semibold mb-6">Pencarian Jadwal</h2>
+        <h2 className="text-2xl font-semibold mb-6">Pencarian Jadwal Keberangkatan</h2>
 
-        <div className="bg-white shadow-lg rounded-lg p-6 md:p-8 flex flex-col md:flex-row gap-6">
+        <div className="bg-white shadow-lg rounded-lg p-6 md:p-8 flex flex-col md:flex-row gap-6 border border-gray-100">
           <div className="w-full md:w-1/6 border-r pr-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2 cursor-pointer hover:bg-blue-600 hover:text-white p-2 rounded-md transition">Promo 25%</h3>
-            <div className="border-t border-gray-300 my-3"></div>
+            
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Jenis Bus</h3>
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-gray-700 text-sm"><input type="checkbox" defaultChecked /> Surya SK</label>
@@ -229,23 +242,25 @@ const Tiket = () => {
 
           <div className="flex-1">
             <div className="flex flex-col lg:flex-row items-center gap-4 mb-6">
-              <div className="flex items-center bg-gray-100 rounded-lg px-3 py-2 w-full lg:w-1/4">
-                <FaBus className="text-gray-500 mr-2" />
-                <input type="text" placeholder="Dari" value={filters.origin} onChange={(e)=>setFilters(s=>({...s, origin: e.target.value}))} className="bg-transparent outline-none w-full text-sm" />
+              <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 w-full lg:w-1/4 focus-within:ring-2 focus-within:ring-blue-500">
+                <FaBus className="text-gray-400 mr-2" />
+                <input type="text" placeholder="Kota Asal" value={filters.origin} onChange={(e)=>setFilters(s=>({...s, origin: e.target.value}))} className="bg-transparent outline-none w-full text-sm text-gray-800" />
               </div>
-              <FaArrowRight className="hidden lg:block text-gray-500" />
-              <div className="flex items-center bg-gray-100 rounded-lg px-3 py-2 w-full lg:w-1/4">
-                <FaBus className="text-gray-500 mr-2" />
-                <input type="text" placeholder="Ke" value={filters.destination} onChange={(e)=>setFilters(s=>({...s, destination: e.target.value}))} className="bg-transparent outline-none w-full text-sm" />
+              <FaArrowRight className="hidden lg:block text-gray-400" />
+              <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 w-full lg:w-1/4 focus-within:ring-2 focus-within:ring-blue-500">
+                <FaBus className="text-gray-400 mr-2" />
+                <input type="text" placeholder="Kota Tujuan" value={filters.destination} onChange={(e)=>setFilters(s=>({...s, destination: e.target.value}))} className="bg-transparent outline-none w-full text-sm text-gray-800" />
               </div>
-              <div className="flex items-center bg-gray-100 rounded-lg px-3 py-2 w-full lg:w-1/4">
-                <FaCalendarAlt className="text-gray-500 mr-2" />
-                <input type="date" value={filters.date} onChange={(e)=>setFilters(s=>({...s, date: e.target.value}))} className="bg-transparent outline-none w-full text-sm" />
+              <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 w-full lg:w-1/4 focus-within:ring-2 focus-within:ring-blue-500">
+                <FaCalendarAlt className="text-gray-400 mr-2" />
+                <input type="date" value={filters.date} onChange={(e)=>setFilters(s=>({...s, date: e.target.value}))} className="bg-transparent outline-none w-full text-sm text-gray-800" />
               </div>
-              <button onClick={search} className="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2 rounded-lg text-sm font-semibold w-full lg:w-auto">{loading ? 'Mencari...' : 'Cari Bus'}</button>
+              <button onClick={search} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold w-full lg:w-auto transition shadow-sm">
+                {loading ? 'Mencari...' : 'Cari Bus'}
+              </button>
             </div>
 
-            {err && <div className="text-red-600 text-sm mb-3">Error: {err}</div>}
+            {err && <div className="text-red-600 bg-red-50 p-3 rounded-md text-sm mb-4 border border-red-100">{err}</div>}
 
             <div className="space-y-4">
               {trips.map(t => (
@@ -253,10 +268,14 @@ const Tiket = () => {
                   <TripCard trip={t} onToggleOpen={toggleOpen} />
 
                   {openTripId === t.id && (
-                    <div id={`seat-panel-${t.id}`} className="mt-4 bg-gray-50 p-6 rounded-lg border">
-                      <div className="bg-blue-800 text-white px-3 py-2 rounded mb-4">Klik pilihan kursi yang tersedia kemudian lanjut ke bagian pembayaran</div>
-                      <div className="flex flex-col md:flex-row gap-6">
-                        <div className="flex-1">
+                    <div id={`seat-panel-${t.id}`} className="mt-4 bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-inner">
+                      <div className="bg-blue-800 text-white px-4 py-2 rounded-md mb-6 text-sm font-medium shadow-sm">
+                        Klik pilihan kursi yang tersedia kemudian lanjut ke bagian pembayaran
+                      </div>
+                      
+                      <div className="flex flex-col md:flex-row gap-8">
+                        {/* Area Kursi Kiri */}
+                        <div className="flex-1 overflow-x-auto pb-4">
                           {seatsMap[t.id]?.lantaiAtas ? (
                             <SeatGridSleeper seats={seatsMap[t.id]} onToggleSeat={(seatId)=>toggleSeat(t.id, seatId)}/>
                           ) : (
@@ -264,36 +283,48 @@ const Tiket = () => {
                           )}
                         </div>
 
-                        <div className="w-full md:w-64">
-                          <div className="bg-white p-4 rounded-md shadow-md space-y-4">
-                            <h4 className="font-semibold text-sm text-gray-800">Keberangkatan</h4>
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm text-gray-600"><span className="font-medium text-gray-800">{t.origin}</span><span className="text-gray-700">{t.time?.slice(0,5)}</span></div>
-                              <div className="text-xs text-gray-600"></div>
+                        {/* Kotak Rincian Kanan */}
+                        <div className="w-full md:w-72">
+                          <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 sticky top-4">
+                            
+                            <div className="space-y-1 mb-4">
+                              <h4 className="font-semibold text-xs text-gray-500 uppercase tracking-wider">Keberangkatan</h4>
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-gray-900 text-sm">{t.asal}</span>
+                                <span className="text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded text-xs">
+                                  {new Date(t.waktu_keberangkatan).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              </div>
                             </div>
 
-                            <div className="space-y-2">
-                              <h4 className="font-semibold text-sm text-gray-800">Kedatangan</h4>
-                              <div className="flex justify-between text-sm text-gray-600"><span className="font-medium text-gray-800">{t.destination}</span><span className="text-gray-700"></span></div>
+                            <div className="space-y-1 mb-5">
+                              <h4 className="font-semibold text-xs text-gray-500 uppercase tracking-wider">Kedatangan</h4>
+                              <div className="font-bold text-gray-900 text-sm">{t.tujuan}</div>
                             </div>
 
-                            <div className="border-t border-gray-300 my-4"></div>
+                            <div className="border-t border-dashed border-gray-300 my-4"></div>
 
-                            <div>
-                              <div className="text-sm font-medium text-gray-600">Nomor Tempat Duduk</div>
-                              <div className="text-xl font-bold text-gray-800">{selectedSeatsMap[t.id]?.join(", ") || '-'}</div>
+                            <div className="mb-4">
+                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Kursi Dipilih</div>
+                              <div className="text-lg font-bold text-blue-600">
+                                {selectedSeatsMap[t.id]?.length > 0 ? selectedSeatsMap[t.id].join(", ") : '-'}
+                              </div>
                             </div>
 
-                            <div className="border-t border-gray-300 my-4"></div>
-
-                            <div>
-                              <div className="text-sm font-medium text-gray-600">Detail Harga</div>
-                              <div className="text-lg font-bold text-gray-800">Rp {(selectedSeatsMap[t.id]?.length * Number(t.price || 0)).toLocaleString('id-ID')}</div>
+                            <div className="bg-gray-50 p-3 rounded-md mb-5 border border-gray-100">
+                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Harga</div>
+                              <div className="text-xl font-black text-gray-900">
+                                Rp {(selectedSeatsMap[t.id]?.length * Number(t.harga || 0)).toLocaleString('id-ID')}
+                              </div>
                             </div>
 
-                            <div className="pt-4 flex gap-2">
-                              <button onClick={() => setOpenTripId(null)} className="flex-1 border border-gray-300 py-1.5 rounded-md text-xs hover:bg-gray-50 transition">Tutup</button>
-                              <button onClick={() => handleProceed(t)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-md text-xs transition">Lanjutkan Pembayaran</button>
+                            <div className="flex flex-col gap-2">
+                              <button onClick={() => handleProceed(t)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-semibold text-sm transition shadow-sm">
+                                Lanjutkan Pembayaran
+                              </button>
+                              <button onClick={() => setOpenTripId(null)} className="w-full bg-white hover:bg-gray-50 text-gray-600 border border-gray-300 py-2 rounded-lg font-medium text-sm transition">
+                                Tutup
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -305,7 +336,11 @@ const Tiket = () => {
               ))}
 
               {!loading && trips.length === 0 && (
-                <div className="p-4 text-center text-gray-500 bg-white rounded">Jadwal untuk destinasi ini belum tersedia.</div>
+                <div className="py-12 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                  <FaBus className="mx-auto text-4xl mb-3 text-gray-300" />
+                  <p className="font-medium">Jadwal untuk destinasi ini belum tersedia atau sudah penuh.</p>
+                  <p className="text-sm mt-1">Coba cari dengan tanggal atau rute yang berbeda.</p>
+                </div>
               )}
             </div>
 

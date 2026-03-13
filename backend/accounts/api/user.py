@@ -76,9 +76,9 @@ def update_user_profile(request, user_id):
 
 @csrf_exempt
 def user_jadwal_list(request):
-    asal = request.GET.get("origin")
-    tujuan = request.GET.get("destination")
-    tanggal = request.GET.get("date")
+    asal = request.GET.get("asal")
+    tujuan = request.GET.get("tujuan")
+    tanggal = request.GET.get("tanggal")
     qs = Jadwal.objects.select_related("bus").filter(status="active")
     if asal: qs = qs.filter(asal__icontains=asal)
     if tujuan: qs = qs.filter(tujuan__icontains=tujuan)
@@ -87,9 +87,9 @@ def user_jadwal_list(request):
 
 @csrf_exempt
 def user_jadwal_search(request):
-    asal = request.GET.get("origin", "").strip()
-    tujuan = request.GET.get("destination", "").strip()
-    date_str = request.GET.get("date", "").strip()
+    asal = request.GET.get("asal", "").strip()
+    tujuan = request.GET.get("tujuan", "").strip()
+    date_str = request.GET.get("tanggal", "").strip()
     qs = Jadwal.objects.select_related("bus").filter(status="active")
     if asal: qs = qs.filter(asal__icontains=asal)
     if tujuan: qs = qs.filter(tujuan__icontains=tujuan)

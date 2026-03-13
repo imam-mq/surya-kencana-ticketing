@@ -11,7 +11,7 @@ const ManajemenPromo = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ Fetch promo dari backend
+  //Fetch promo dari backend
   const fetchPromos = async () => {
     try {
       const response = await fetch(
@@ -37,7 +37,7 @@ const ManajemenPromo = () => {
     fetchPromos();
   }, []);
 
-  // ✅ Delete ke backend
+  // Delete ke backend
   const handleDelete = async () => {
     if (!selectedPromoId) return;
 
@@ -64,7 +64,7 @@ const ManajemenPromo = () => {
     setShowDeleteModal(false); // Hide modal after deletion
   };
 
-  // ✅ Filter berdasarkan nama/judul
+  // Filter berdasarkan nama/judul
   const filteredPromos = promos.filter((p) =>
     (p.nama || "").toLowerCase().includes(search.toLowerCase())
   );
@@ -78,7 +78,10 @@ const ManajemenPromo = () => {
 
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Manajemen Promo</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mt-2">
+              Daftar Promo
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Kelola semua penawaran dan diskon untuk surya kencana</p>
+            </h2>
             <button
               onClick={() => navigate("/admin/TambahPromo")}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2"
@@ -98,81 +101,112 @@ const ManajemenPromo = () => {
             <FaSearch className="absolute left-3 top-3 text-gray-500" />
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full text-left">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="p-3 font-bold">Judul</th>
-                  <th className="p-3 font-bold">Deskripsi</th>
-                  <th className="p-3 font-bold">Diskon</th>
-                  <th className="p-3 font-bold">Periode</th>
-                  <th className="p-3 font-bold">Status</th>
-                  <th className="p-3 font-bold">Tanggal</th>
-                  <th className="p-3 font-bold text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPromos.map((promo) => (
-                  <tr key={promo.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3">{promo.nama}</td>
-                    
-                    {/* 🔥 Deskripsi dimunculkan di sini */}
-                    <td className="p-3 text-gray-700 max-w-xs truncate" title={promo.deskripsi}>
-                        {promo.deskripsi || "-"}
-                    </td>
-                    
-                    <td className="p-3">{promo.persen_diskon}%</td>
-                    
-                    <td className="p-3">
-                      {promo.tanggal_mulai} s/d {promo.tanggal_selesai}
-                    </td>
-                    
-                    <td className="p-3">
-                      <span
-                        className={`px-3 py-1 rounded-lg text-white text-sm ${
-                          promo.status === "active" ? "bg-green-600" : "bg-red-600"
-                        }`}
-                      >
-                        {promo.status === "active" ? "Aktif" : "Nonaktif"}
-                      </span>
-                    </td>
-                    
-                    {/* 🔥 Tanggal (Diambil dari tanggal pembuatan/tanggal mulai) */}
-                    <td className="p-3 text-gray-600">{promo.tanggal_mulai}</td>
+          <div className="bg-white shadow-lg rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
 
-                    <td className="p-3 text-center flex gap-3 justify-center">
-                      <button
-                        onClick={() => navigate(`/admin/DetailPromo/${promo.id}`)}
-                        className="text-blue-600 hover:text-blue-800 text-xl"
-                      >
-                        <FaEye />
-                      </button>
-
-                      <button
-                        onClick={() => navigate(`/admin/EditPromo/${promo.id}`)}
-                        className="text-green-600 hover:text-green-800 text-xl"
-                      >
-                        <FaEdit />
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setSelectedPromoId(promo.id);
-                          setShowDeleteModal(true);
-                        }}
-                        className="text-red-600 hover:text-red-800 text-xl"
-                      >
-                        <FaTrash />
-                      </button>
-                    </td>
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">No</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Judul Promo</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Deskripsi</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">Diskon</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">Periode</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">Status</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">Tanggal</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-center">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
 
-            {filteredPromos.length === 0 && (
-              <p className="text-center p-4 text-gray-600">Tidak ada promo ditemukan.</p>
-            )}
+                <tbody className="divide-y">
+
+                  {filteredPromos.map((promo, index) => (
+                    <tr key={promo.id} className="hover:bg-gray-50">
+
+                      {/* NO */}
+                      <td className="px-6 py-4 text-center text-sm">
+                        {index + 1}
+                      </td>
+
+                      {/* JUDUL */}
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-gray-900">
+                          {promo.nama}
+                        </div>
+                      </td>
+
+                      {/* DESKRIPSI */}
+                      <td className="px-6 py-4 text-gray-600 max-w-xs truncate">
+                        {promo.deskripsi || "-"}
+                      </td>
+
+                      {/* DISKON */}
+                      <td className="px-6 py-4 text-center">
+                        <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">
+                          {promo.persen_diskon}%
+                        </span>
+                      </td>
+
+                      {/* PERIODE */}
+                      <td className="px-6 py-4 text-center text-sm">
+                        {promo.tanggal_mulai} - {promo.tanggal_selesai}
+                      </td>
+
+                      {/* STATUS */}
+                      <td className="px-6 py-4 text-center">
+                        <span
+                          className={`px-3 py-1 text-xs rounded-full ${
+                            promo.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-200 text-gray-600"
+                          }`}
+                        >
+                          {promo.status === "active" ? "Aktif" : "Nonaktif"}
+                        </span>
+                      </td>
+
+                      {/* TANGGAL */}
+                      <td className="px-6 py-4 text-center text-sm">
+                        {promo.tanggal_mulai}
+                      </td>
+
+                      {/* AKSI */}
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center gap-3">
+
+                          <button
+                            onClick={() => navigate(`/admin/DetailPromo/${promo.id}`)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <FaEye />
+                          </button>
+
+                          <button
+                            onClick={() => navigate(`/admin/EditPromo/${promo.id}`)}
+                            className="text-amber-600 hover:text-amber-800"
+                          >
+                            <FaEdit />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setSelectedPromoId(promo.id);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <FaTrash />
+                          </button>
+
+                        </div>
+                      </td>
+
+                    </tr>
+                  ))}
+
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
