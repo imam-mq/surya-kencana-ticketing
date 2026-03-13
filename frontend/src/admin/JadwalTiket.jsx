@@ -90,103 +90,90 @@ const JadwalTiket = () => {
                 </thead>
                 <tbody>
                   {items.map((it) => {
-                        // 1. Ambil Nama Bus dari Serializer (backend kirim 'bus_name', bukan object 'bus')
-                        const busLabel = it.bus_name ? `${it.bus_name} (${it.bus_type || '-'})` : "Bus Dihapus";
+                    // 1. Ambil Nama Bus
+                    const busLabel = it.bus_name ? `${it.bus_name} (${it.bus_type || '-'})` : "Bus Dihapus";
 
-                        // 2. Format Tanggal & Jam dari 'waktu_keberangkatan'
-                        const dateObj = new Date(it.waktu_keberangkatan);
-                        const dateStr = dateObj.toLocaleDateString("id-ID", {
-                          day: "numeric", month: "short", year: "numeric"
-                        });
-                        const timeStr = dateObj.toLocaleTimeString("id-ID", {
-                          hour: "2-digit", minute: "2-digit"
-                        });
+                    // 2. Format Tanggal & Jam
+                    const dateObj = new Date(it.waktu_keberangkatan);
+                    const dateStr = dateObj.toLocaleDateString("id-ID", {
+                      day: "numeric", month: "short", year: "numeric"
+                    });
+                    const timeStr = dateObj.toLocaleTimeString("id-ID", {
+                      hour: "2-digit", minute: "2-digit"
+                    });
 
-                        // 3. Cek Status
-                        const statusLower = (it.status || "").toString().toLowerCase();
-                        const isActive = statusLower === "active" || statusLower === "aktif";
+                    // 🔥 3. (PINDAHAN) Hitung Kursi DULU sebelum cek status!
+                    const capacity = it.kapasitas || 28;
+                    const sold = it.terjual || 0;
+                    const available = Math.max(0, capacity - sold); 
 
-                        // 🔥 4. PERBAIKAN: Hitung Kursi dari data Backend
-                        const capacity = it.kapasitas || 28;
-                        const sold = it.terjual || 0;
-                        const available = Math.max(0, capacity - sold); 
+                    // 🔥 4. Baru Cek Status berdasarkan kursi yang sudah dihitung
+                    const statusLower = (it.status || "").toString().toLowerCase();
+                    const isActive = statusLower === "active" || statusLower === "aktif";
+                    const isFull = available === 0;
+                    
+                    // Tentukan Warna & Teks
+                    const displayStatus = isFull ? "SoldOut" : it.status;
+                    const borderColor = isFull ? "#ef4444" : (isActive ? "#22c55e" : "#f59e0b");
+                    const textColor = isFull ? "#b91c1c" : (isActive ? "#15803d" : "#b45309");
+                    const bgColor = isFull ? "#fee2e2" : (isActive ? "#dcfce7" : "#fef3c7");
 
-                        return (
-                          <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
-                            {/* GANTI origin -> asal */}
-                            <td className="p-3 font-medium">{it.asal}</td>
-                            
-                            {/* GANTI destination -> tujuan */}
-                            <td className="p-3 font-medium">{it.tujuan}</td>
-                            
-                            {/* GANTI date -> dateStr (Format Indo) */}
-                            <td className="p-3">{dateStr}</td>
-                            
-                            {/* GANTI time -> timeStr (Jam) */}
-                            <td className="p-3">{timeStr}</td>
-                            
-                            {/* GANTI price -> harga */}
-                            <td className="p-3 font-semibold text-gray-700">
-                              Rp {Number(it.harga || 0).toLocaleString("id-ID")}
-                            </td>
-                            
-                            {/* 🔥 TAMPILKAN ANGKA SISA KURSI */}
-                            <td className="p-3 text-center font-bold text-blue-700">
-                              {available} / {capacity}
-                            </td>
-                            
-                            {/* Gunakan busLabel yg sudah diperbaiki */}
-                            <td className="p-3">{busLabel}</td>
-                            
-                            <td className="p-3 capitalize">
-                              <Box
-                                component="span"
-                                sx={{
-                                  display: "inline-block",
-                                  px: 2.5,
-                                  py: 0.5,
-                                  borderRadius: "30px",
-                                  fontWeight: 700,
-                                  border: `1px solid ${isActive ? "#22c55e" : "#ef4444"}`, // Sedikit diperhalus border-nya
-                                  color: isActive ? "#15803d" : "#b91c1c",
-                                  backgroundColor: isActive ? "#dcfce7" : "#fee2e2",
-                                  textTransform: "capitalize",
-                                  minWidth: 90,
-                                  textAlign: "center",
-                                  fontSize: "0.85rem"
-                                }}
-                              >
-                                {it.status}
-                              </Box>
-                            </td>
-                            <td className="p-3 text-center">
-                              <div className="flex justify-center gap-2">
-                                <button 
-                                    onClick={() => navigate(`/admin/detail-jadwal/${it.id}`)} 
-                                    className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition"
-                                    title="Lihat Detail"
-                                >
-                                  <FaEye />
-                                </button>
-                                <button 
-                                    onClick={() => navigate(`/admin/edit-jadwal/${it.id}`)} 
-                                    className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition"
-                                    title="Edit Jadwal"
-                                >
-                                  <FaEdit />
-                                </button>
-                                <button 
-                                    onClick={() => onDelete(it.id)} 
-                                    className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition"
-                                    title="Hapus Jadwal"
-                                >
-                                  <FaTrash />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                    })}
+                    return (
+                      <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="p-3 font-medium">{it.asal}</td>
+                        <td className="p-3 font-medium">{it.tujuan}</td>
+                        <td className="p-3">{dateStr}</td>
+                        <td className="p-3">{timeStr}</td>
+                        <td className="p-3 font-semibold text-gray-700">
+                          Rp {Number(it.harga || 0).toLocaleString("id-ID")}
+                        </td>
+                        
+                        {/* TAMPILKAN ANGKA SISA KURSI (Merah kalau habis) */}
+                        <td className={`p-3 text-center font-bold ${isFull ? 'text-red-600' : 'text-blue-700'}`}>
+                          {available} / {capacity}
+                        </td>
+                        
+                        <td className="p-3">{busLabel}</td>
+                        
+                        <td className="p-3 capitalize">
+                          <Box
+                            component="span"
+                            sx={{
+                              display: "inline-block",
+                              px: 2.5,
+                              py: 0.5,
+                              borderRadius: "30px",
+                              fontWeight: 700,
+                              border: `1px solid ${borderColor}`,
+                              color: textColor,
+                              backgroundColor: bgColor,
+                              textTransform: "capitalize",
+                              minWidth: 90,
+                              textAlign: "center",
+                              fontSize: "0.85rem"
+                            }}
+                          >
+                            {displayStatus} 
+                          </Box>
+                        </td>
+                        
+                        {/* Kolom Aksi (Biarkan sama seperti kodingan Abang) */}
+                        <td className="p-3 text-center">
+                          <div className="flex justify-center gap-2">
+                            <button onClick={() => navigate(`/admin/detail-jadwal/${it.id}`)} className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition" title="Lihat Detail">
+                              <FaEye />
+                            </button>
+                            <button onClick={() => navigate(`/admin/edit-jadwal/${it.id}`)} className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition" title="Edit Jadwal">
+                              <FaEdit />
+                            </button>
+                            <button onClick={() => onDelete(it.id)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition" title="Hapus Jadwal">
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {!items.length && (
                     <tr><td colSpan={9} className="p-4 text-center text-gray-500">Belum ada jadwal.</td></tr>
                   )}

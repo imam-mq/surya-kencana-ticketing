@@ -6,7 +6,6 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-# Hapus timedelta jika tidak digunakan lagi untuk windowing
 
 from .models import Tiket, Pemesanan
 
@@ -15,30 +14,33 @@ from .models import Tiket, Pemesanan
 def agent_ticket_pdf(request):
     user = request.user
 
-    # Verifikasi peran
-    if getattr(user, "peran", None) != "agent":
-        return Response({"error": "Hanya agent yang diizinkan"}, status=403)
+    # Verifikasi peran (Admin dan Agent boleh download)
+    peran = getattr(user, "peran", None)
+    if peran not in ["agent", "admin"]:
+        return Response({"error": "Akses ditolak. Anda bukan Admin/Agent."}, status=403)
 
     ticket_id = request.GET.get("ticket_id")
     if not ticket_id:
         return Response({"error": "ticket_id wajib diisi"}, status=400)
 
     try:
-        # 🔥 PERBAIKAN: Cari tiket berdasarkan ID dan pastikan pemesan-nya adalah user ini
-        # Kita filter lewat relasi 'pemesanan' karena field pembeli ada di sana
-        target_ticket = Tiket.objects.get(
-            id=ticket_id,
-            pemesanan__peran_pembeli="agent"
-        )
         
-        # Ambil semua tiket yang berada dalam satu nomor induk Pemesanan yang sama
+        target_ticket = Tiket.objects.filter(pemesanan_id=ticket_id).first()
+        if not target_ticket:
+            target_ticket = Tiket.objects.get(id=ticket_id)
+        
         induk_pesanan = target_ticket.pemesanan
+        
+        if peran == "agent":
+            if induk_pesanan.pembeli != user:
+                return Response({"error": "Anda tidak berhak mendownload tiket milik agent lain."}, status=403)
+                
         all_tickets_in_order = induk_pesanan.tiket.all().order_by("nomor_kursi")
         
     except Tiket.DoesNotExist:
-        return Response({"error": "Tiket tidak ditemukan atau akses ditolak"}, status=404)
+        return Response({"error": "Tiket tidak ditemukan di sistem"}, status=404)
 
-    # ================= PDF Generator =================
+
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="tiket-{target_ticket.kode_tiket}.pdf"'
 
@@ -94,7 +96,7 @@ def agent_ticket_pdf(request):
     draw(f"Total Bayar  : Rp {int(induk_pesanan.harga_akhir):,}".replace(",", "."))
     draw(f"Status       : {induk_pesanan.status_pembayaran.upper()}")
     draw(f"Metode       : {induk_pesanan.metode_pembayaran.upper()}")
-    draw(f"Agen         : {user.username}")
+    draw(f"Agen         : {induk_pesanan.pembeli.username}")
     draw(f"Waktu Cetak  : {target_ticket.dicetak_pada.strftime('%d/%m/%Y %H:%M')}")
     separator("-")
 

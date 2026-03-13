@@ -83,12 +83,9 @@ class ScheduleOutSerializer(serializers.ModelSerializer):
 
     def get_terjual(self, obj):
         try:
-            # 1. Kita ambil langsung dari tabel Tiket yang terhubung ke jadwal ini
-            # 2. Kita hitung yang status pemesanannya 'paid' atau 'pending' (biar yang baru booking langsung ngunci kursi)
-            # 3. Jangan lupa import Q jika pakai filter kompleks, atau pakai cara simple ini:
             return Tiket.objects.filter(
                 jadwal=obj,
-                pemesanan__status_pembayaran__in=['paid', 'pending'] # 🔥 INI KUNCI UTAMANYA!
+                pemesanan__status_pembayaran__in=['paid', 'pending']
             ).count()
         except Exception as e:
             print(f"Error hitung kursi untuk Jadwal {obj.id}: {e}")
