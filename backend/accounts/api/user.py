@@ -1,15 +1,18 @@
 import json
 import math
 from datetime import datetime
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from rest_framework.response import Response
+from accounts.models import Jadwal, Tiket, Promosi, Pemesanan 
+from django.db import transaction
+from django.utils import timezone
 
-# FIX: Gunakan hanya model Bahasa Indonesia
+
 from accounts.models import Jadwal, Tiket, Promosi
 from accounts.serializers import ScheduleOutSerializer, PromoSerializer
 
@@ -119,3 +122,89 @@ def user_jadwal_seats(request, pk):
         return JsonResponse([mk_item(s) for s in seats], safe=False)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=404)
+    
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def user_create_order(request):
+    user = request.user
+    data = request.data
+
+    jadwal_id = data.get('jadwal_id')
+    penumpang_list = data.get('penumpang') # mengambil data {kursi, nama, nik, nomor telepon & jenis kelamin}
+    promosi_id = data.get('promosi_id')
+
+    try:
+        jadwal = Jadwal.objects.get(id=jadwal_id)
+    except Jadwal.DoesNotExist:
+        return Response({'error': 'Jadwal tidak ditemukan'}, status=404)
+
+    # harga awal
+    harga_per_tiket = jadwal.harga
+    jumlah_tiket = len(penumpang_list)
+    total_harga = harga_per_tiket * jumlah_tiket
+
+    jumlah_diskon = 0
+    promosi = None
+
+    # 2. Pengecekan Promo (Voucher)
+    if promosi_id:
+        try:
+            promosi = Promosi.objects.get(id=promosi_id, status='active')
+            hari_ini = timezone.now().date()
+            
+            # mengecek apakah promo masih active
+            if promosi.tanggal_mulai <= hari_ini <= promosi.tanggal_selesai:
+                jumlah_diskon = (total_harga * promosi.persen_diskon) / 100
+            else:
+                return Response({'error': 'Maaf, masa berlaku promo ini sudah habis.'}, status=400)
+                
+        except Promosi.DoesNotExist:
+            return Response({'error': 'Voucher tidak valid.'}, status=400)
+
+    harga_akhir = total_harga - jumlah_diskon
+
+    # menyimpan Database
+    try:
+        with transaction.atomic():
+            # Pemesanan
+            pemesanan = Pemesanan.objects.create(
+                pembeli=user,
+                peran_pembeli='user',
+                jadwal=jadwal,
+                promosi=promosi,
+                total_harga=total_harga,
+                jumlah_diskon=jumlah_diskon,
+                harga_akhir=harga_akhir,
+                status_pembayaran='pending',
+                metode_pembayaran='midtrans' # Placeholder sebelum midtrans merespon
+            )
+
+            # data tiket
+            for p in penumpang_list:
+                
+                if Tiket.objects.filter(jadwal=jadwal, nomor_kursi=p['kursi']).exists():
+                    raise Exception(f"Waduh! Kursi {p['kursi']} baru saja dipesan orang lain. Silakan pilih kursi lain.")
+
+                Tiket.objects.create(
+                    pemesanan=pemesanan,
+                    jadwal=jadwal,
+                    nomor_kursi=p['kursi'],
+                    nama_penumpang=p['nama'],
+                    ktp_penumpang=p['nik'],
+                    telepon_penumpang=p.get('telepon', ''),
+                    jenis_kelamin_penumpang=p.get('gender', ''),
+                    harga_kursi=harga_per_tiket
+                )
+
+        # jika succes akan menampilkan
+        return Response({
+            'success': True,
+            'message': 'Pesanan berhasil diamankan!',
+            'order_id': pemesanan.id,
+            'harga_akhir': pemesanan.harga_akhir
+        })
+
+    except Exception as e:
+        # jika kursi sudah di isi oleh orang lain maka tidak bisa melanjutkan pembayaran
+        return Response({'error': str(e)}, status=400)

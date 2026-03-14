@@ -53,4 +53,6 @@ urlpatterns = [
     path('jadwal/', user.user_jadwal_list),
     path('jadwal/search/', user.user_jadwal_search),
     path('jadwal/<int:pk>/seats/', user.user_jadwal_seats),
+
+    path('user/order/create/', user.user_create_order, name='user-create-order'),
 ]

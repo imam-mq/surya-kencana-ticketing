@@ -3,6 +3,7 @@ import { FaBus, FaCalendarAlt, FaArrowRight } from "react-icons/fa";
 import LogoSK1 from "../images/SK-Logo1.png";
 import SeatGridInline28 from "./kursi/SeatGridInline28";
 import SeatGridSleeper from "./kursi/SeatGridSleeper";
+import Checkout from "./checkout/Checkout";
 
 const API = "http://127.0.0.1:8000/api/accounts";
 
@@ -114,6 +115,7 @@ const Tiket = () => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [openTripId, setOpenTripId] = useState(null);
+  const [checkoutData, setCheckoutData] = useState(null);
 
   const [seatsMap, setSeatsMap] = useState({});
   const [selectedSeatsMap, setSelectedSeatsMap] = useState({});
@@ -218,8 +220,12 @@ const Tiket = () => {
   const handleProceed = (trip) => {
     const seats = selectedSeatsMap[trip.id] || [];
     if (!seats.length) return alert('Silakan pilih kursi terlebih dahulu');
-    alert(`Lanjut ke pembayaran.\nJadwal #${trip.id}\nKursi: ${seats.join(', ')}\nTotal: Rp ${(seats.length * Number(trip.harga || 0)).toLocaleString('id-ID')}`);
+    setCheckoutData({ trip, seats });
   };
+
+  if (checkoutData) {
+    return <Checkout data={checkoutData} onBack={() => setCheckoutData(null)} />;
+  }
 
   return (
     <div className="min-h-screen bg-white">
