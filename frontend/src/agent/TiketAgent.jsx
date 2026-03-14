@@ -3,6 +3,9 @@ import { FaBus, FaCalendarAlt, FaArrowRight } from "react-icons/fa";
 import LogoSK1 from "../images/SK-Logo1.png";
 import Sidebar_Agent from './layout/Sidebar_Agent';
 import Agent_Navbar from './layout/Agent_Navbar';
+import KonfirmasiPemesanan from "../agent/konfirmasipemesanan/KonfirmasiPemesanan";
+import DataPenumpang from "./datapenumpang/DataPenumpang";
+import LoadingDanSukses from "./loadingdansukses/LoadingDanSukses";
 
 // Komponen kursi — pastikan file ada di path ini
 import SeatGridInline28 from "./kursi/SeatGridInline28";
@@ -62,12 +65,12 @@ const TripCard = ({ trip, onToggleOpen }) => {
 
         <div className="flex flex-col items-center gap-2 min-w-[100px]">
           <div className="text-center">
-            {/* 🔥 Angka ini akan otomatis berkurang kalau ada yang booking */}
+            {/* kursi tersedia akan otomatis berkurang jika ada yang booking */}
             <p className="text-sm font-bold text-gray-900">{availableSeats}</p>
             <p className="text-xs text-gray-500">Kursi Tersedia</p>
           </div>
 
-          {/* 🔥 Progress bar ini juga akan otomatis maju sesuai tiket terjual */}
+          {/* Progress bar akan maju jika ada yang booking */}
           <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
@@ -101,7 +104,7 @@ const TiketAgent = () => {
 
   useEffect(() => { loadAll(); }, []);
 
-  // 🔥 1. UBAH KE ENDPOINT SEARCH BARU
+  // UBAH KE ENDPOINT SEARCH BARU
   const loadAll = async () => {
     try {
       setLoading(true);
@@ -115,7 +118,7 @@ const TiketAgent = () => {
     }
   };
 
-  // 🔥 2. UBAH PARAMETER PENCARIAN (asal, tujuan, tanggal)
+  //  UBAH PARAMETER PENCARIAN (asal, tujuan, tanggal)
   const search = async () => {
     try {
       setErr(""); setLoading(true);
@@ -206,7 +209,7 @@ const TiketAgent = () => {
     });
   };
 
-  // 🔥 3. MAPPING PAYLOAD BOOKING AGENT
+  // MAPPING PAYLOAD BOOKING AGENT
   const submitAgentBooking = async (trip) => {
     try {
       const seats = selectedSeatsMap[trip.id] || [];
@@ -314,226 +317,38 @@ const TiketAgent = () => {
         <Agent_Navbar />
 
         {/* ===== POPUP 1: DATA PENUMPANG ===== */}
-        {showPassengerPopup && activeTrip && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-2xl">
-              <h2 className="text-2xl font-extrabold text-white">Data Penumpang</h2>
-              <p className="text-blue-100 text-sm mt-1">Lengkapi informasi penumpang sesuai kursi</p>
-            </div>
-
-            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-              {selectedSeatsMap[activeTrip.id]?.map((seat, index) => (
-                <div key={index} className="border rounded-xl p-4 space-y-3">
-                  <h4 className="font-semibold text-gray-700">Penumpang {index + 1} (Kursi {seat})</h4>
-                  <input
-                    type="text" name="name" placeholder="Nama Lengkap"
-                    className="w-full px-4 py-3 bg-gray-50 border rounded-xl"
-                    value={passengerData[index]?.name || ""}
-                    onChange={(e) => handlePassengerChange(index, e)}
-                  />
-                  <input
-                    type="text" name="no_ktp" placeholder="No. KTP"
-                    className="w-full px-4 py-3 bg-gray-50 border rounded-xl"
-                    value={passengerData[index]?.no_ktp || ""}
-                    onChange={(e) => handlePassengerChange(index, e)}
-                  />
-                  <select
-                    name="gender"
-                    className="w-full px-4 py-3 bg-gray-50 border rounded-xl"
-                    value={passengerData[index]?.gender || ""}
-                    onChange={(e) => handlePassengerChange(index, e)}
-                  >
-                    <option value="">Pilih Jenis Kelamin</option>
-                    <option value="Laki-laki">Laki-laki</option>
-                    <option value="Perempuan">Perempuan</option>
-                  </select>
-                  <input
-                    type="tel" name="phone" placeholder="No. HP"
-                    className="w-full px-4 py-3 bg-gray-50 border rounded-xl"
-                    value={passengerData[index]?.phone || ""}
-                    onChange={(e) => handlePassengerChange(index, e)}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className="px-6 pb-6 flex gap-3">
-              <button onClick={() => setShowPassengerPopup(false)} className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold">
-                Batal
-              </button>
-              <button
-                onClick={() => {
-                  if (
-                    passengerData.length !== (selectedSeatsMap[activeTrip.id]?.length || 0) ||
-                    passengerData.some(p => !p?.name || !p?.no_ktp || !p?.gender || !p?.phone)
-                  ) {
-                    alert("Mohon lengkapi semua data penumpang");
-                    return;
-                  }
-                  setShowPassengerPopup(false);
-                  setShowConfirmPopup(true);
-                }}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold"
-              >
-                Simpan dan Lanjut
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        <DataPenumpang
+          showPassengerPopup={showPassengerPopup}
+          activeTrip={activeTrip}
+          passengerData={passengerData}
+          selectedSeatsMap={selectedSeatsMap}
+          setShowPassengerPopup={setShowPassengerPopup}
+          setShowConfirmPopup={setShowConfirmPopup}
+          handlePassengerChange={handlePassengerChange}
+        />
 
         {/* ===== POPUP 2: KONFIRMASI ===== */}
-        {showConfirmPopup && activeTrip && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-              <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-5 rounded-t-2xl">
-                <h2 className="text-2xl font-extrabold text-white">Konfirmasi Pemesanan</h2>
-                <p className="text-green-100 text-sm mt-1">Periksa kembali detail pemesanan</p>
-              </div>
+        <KonfirmasiPemesanan
+          showConfirmPopup={showConfirmPopup}
+          activeTrip={activeTrip}
+          passengerData={passengerData}
+          selectedSeatsMap={selectedSeatsMap}
+          showLoadingPopup={showLoadingPopup}
+          setShowConfirmPopup={setShowConfirmPopup}
+          handleConfirmBooking={handleConfirmBooking}
+        />
 
-              <div className="p-6 space-y-6">
-                <div className="bg-blue-50 rounded-xl p-5 space-y-3">
-                  <h3 className="font-bold text-gray-900 text-lg mb-3">Detail Perjalanan</h3>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-gray-600 font-medium">Bis</p>
-                      <p className="font-bold text-gray-900">{activeTrip.bus_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600 font-medium">Jam</p>
-                      <p className="font-bold text-gray-900">{new Date(activeTrip.waktu_keberangkatan).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600 font-medium">Keberangkatan</p>
-                      <p className="font-bold text-gray-900">{activeTrip.asal}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600 font-medium">Kedatangan</p>
-                      <p className="font-bold text-gray-900">{activeTrip.tujuan}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t-2 border-dashed border-gray-300"></div>
-
-                <div className="bg-purple-50 rounded-xl p-5">
-                  <h3 className="font-bold text-gray-900 text-lg mb-3">Data Penumpang</h3>
-                  <div className="space-y-2">
-                    {passengerData.map((p, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xl font-extrabold text-gray-900">{p.name}</p>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Kursi: {selectedSeatsMap[activeTrip.id]?.[index]}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-5 border-2 border-green-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium">Total Pembayaran</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {selectedSeatsMap[activeTrip.id]?.length || 0} kursi × Rp{" "}
-                        {Number(activeTrip.harga || 0).toLocaleString("id-ID")}
-                      </p>
-                    </div>
-                    <p className="text-3xl font-extrabold text-green-600">
-                      Rp{" "}
-                      {((selectedSeatsMap[activeTrip.id]?.length || 0) * Number(activeTrip.harga || 0)).toLocaleString("id-ID")}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 text-center italic">
-                  Klik konfirmasi jika sudah menerima pembayaran
-                </p>
-              </div>
-
-              <div className="px-6 pb-6 flex gap-3">
-                <button onClick={() => setShowConfirmPopup(false)} className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all">
-                  Batal
-                </button>
-                <button
-                  onClick={handleConfirmBooking}
-                  disabled={showLoadingPopup}
-                  className={`flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition-all shadow-lg ${showLoadingPopup ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  {showLoadingPopup ? "Memproses..." : "Konfirmasi & Terbitkan Tiket"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===== POPUP 3: LOADING ===== */}
-        {showLoadingPopup && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 text-center w-full max-w-sm">
-              <div className="w-20 h-20 mx-auto mb-6 relative">
-                <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Memproses Pemesanan...</h3>
-              <p className="text-gray-600 text-sm">Mohon tunggu sebentar, sedang menghitung komisi</p>
-            </div>
-          </div>
-        )}
-
-        {/* ===== POPUP 4: SUCCESS ===== */}
-        {showSuccessPopup && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-              <div className="pt-8 pb-4 text-center">
-                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-2xl">
-                  <svg className="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              </div>
-
-              <div className="px-8 pb-8 text-center">
-                <h3 className="text-2xl font-extrabold text-gray-900 mb-3">Pemesanan Tiket Berhasil!</h3>
-                <p className="text-gray-600 mb-6">Tiket telah diterbitkan dan komisi telah dicatat ke akun Anda.</p>
-
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
-                  <p className="text-sm text-gray-700">
-                    <span className="font-bold text-blue-600">
-                      {activeTrip ? (selectedSeatsMap[activeTrip.id] || []).length : 0}
-                    </span> tiket telah diterbitkan
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      setShowSuccessPopup(false);
-                      // navigate('/agent/tiket-terbit'); // Bisa di-uncomment nanti
-                    }}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg"
-                  >
-                    Lihat Tiket Terbit
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      setShowSuccessPopup(false);
-                      setPassengerData([]); // Reset data penumpang
-                      setOpenTripId(null);
-                      setSelectedSeatsMap({}); // Reset kursi
-                    }}
-                    className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
-                  >
-                    Buat Pemesanan Baru
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ===== POPUP 3 & 4: LOADING + SUCCESS ===== */}
+        <LoadingDanSukses
+          showLoadingPopup={showLoadingPopup}
+          showSuccessPopup={showSuccessPopup}
+          activeTrip={activeTrip}
+          selectedSeatsMap={selectedSeatsMap}
+          setShowSuccessPopup={setShowSuccessPopup}
+          setPassengerData={setPassengerData}
+          setOpenTripId={setOpenTripId}
+          setSelectedSeatsMap={setSelectedSeatsMap}
+        />
 
         {/* UTAMA */}
         <div className="max-w-6xl mx-auto px-4 py-10 w-full">
