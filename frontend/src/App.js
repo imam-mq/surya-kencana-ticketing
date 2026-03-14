@@ -40,6 +40,7 @@ import Btransfer from "./admin/Laporan/Btransfer";
 import ProfilUser from "./user/Profil";
 import DashboardUser from "./user/LayoutUser/DashboardUser";
 import Tiket from "./user/Tiket";
+import PesananSaya from "./user/PesananSaya";
 
 // Agent Pages
 import DashboardAgent from "./agent/DashboardAgent";
@@ -97,6 +98,7 @@ function App() {
         <Route index element={<ProfilUser />} />
         <Route path="profil" element={<ProfilUser />} />
         <Route path="tiket" element={<Tiket />} />
+        <Route path="pesanansaya" element={<PesananSaya />} />
       </Route>
     </Routes>
   );
