@@ -11,7 +11,7 @@ import json
 User = get_user_model()
 
 # ==========================================
-# 1. REGISTER USER (TETAP SAMA)
+# 1. REGISTER USER 
 # ==========================================
 @csrf_exempt
 @require_POST
@@ -42,7 +42,7 @@ def register_user(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 # ==========================================
-# 2. LOGIN ADMIN (PERBAIKAN UTAMA)
+# 2. LOGIN ADMIN 
 # ==========================================
 @csrf_exempt
 @require_POST
@@ -66,7 +66,7 @@ def login_admin_api(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 # ==========================================
-# 3. LOGIN AGENT (PERBAIKAN UTAMA)
+# 3. LOGIN AGENT 
 # ==========================================
 @csrf_exempt
 @require_POST
@@ -76,7 +76,7 @@ def login_agent(request):
         email = data.get("email")
         password = data.get("password")
 
-        # PERBAIKAN: Gunakan 'username=email'
+        # menggunakan'username=email'
         user = authenticate(request, username=email, password=password)
         
         if not user or getattr(user, "peran", None) != "agent":
@@ -95,7 +95,7 @@ def login_agent(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 # ==========================================
-# 4. LOGIN USER (PERBAIKAN UTAMA)
+# 4. LOGIN USER 
 # ==========================================
 @csrf_exempt
 @require_POST
@@ -105,14 +105,15 @@ def login_user(request):
         email = data.get("email") 
         password = data.get("password")
 
-        # PERBAIKAN: Gunakan 'username=email'
+        # menggunakan username=email'
         user = authenticate(request, username=email, password=password)
         
         if user is not None and getattr(user, "peran", None) == "user":
             login(request, user)
             return JsonResponse({
                 "success": True, 
-                "id": user.id, 
+                "id": user.id,
+                "message": "Login berhasil", 
                 "email": user.email, 
                 "peran": user.peran
             })

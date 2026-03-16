@@ -24,12 +24,14 @@ const Profil = () => {
   // Ambil data user saat halaman dibuka
   useEffect(() => {
     if (!userId) return;
-
-    fetch(`http://localhost:8000/api/accounts/user/${userId}/profile/`)
+    fetch(`http://localhost:8000/api/accounts/user/${userId}/profile/`, {
+      credentials: "include", 
+    })
       .then((res) => res.json())
       .then((data) => {
         console.log("Data profil diterima:", data);
         setUserData({
+          nama: data.nama || "",
           email: data.email || "",
           noKtp: data.noKtp || "",
           jenisKelamin: data.jenisKelamin || "",
@@ -45,7 +47,6 @@ const Profil = () => {
         console.error("Gagal memuat profil:", err);
         setLoading(false);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   // Handle input perubahan
@@ -64,6 +65,7 @@ const Profil = () => {
 
     fetch(`http://localhost:8000/api/accounts/user/${userId}/update/`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
     })

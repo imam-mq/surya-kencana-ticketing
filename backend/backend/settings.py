@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# Memuat variabel dari file .env
+# variabe  file .env
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -10,8 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Mengambil kunci rahasia secara aman
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dummy-key-untuk-github')
 
-DEBUG = True
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", ".ngrok-free.dev", "*"]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     'accounts',
 ]
 
-# ✅ PERBAIKAN 1: Urutan Authentication (Session harus di atas JWT jika pakai Cookie)
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.SessionAuthentication', 
@@ -95,10 +95,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.Pengguna'
 
 # ===============================================
-# ✅ CORS & SESSION CONFIGURATION (UPDATED)
+#  SESSION CONFIGURATION (UPDATED)
 # ===============================================
 
-# ✅ PERBAIKAN 2: Tambahkan port 5173 (Vite) karena seringkali React lari ke sana
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:3000",
@@ -111,9 +110,20 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:5173",
     "http://localhost:5173",
+    "https://jointured-ivana-unarrogantly.ngrok-free.dev",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+
+
+# KONFIGURASI MIDTRANS
+MIDTRANS_MERCHANT_ID = os.getenv('MIDTRANS_MERCHANT_ID')
+MIDTRANS_CLIENT_KEY = os.getenv('MIDTRANS_CLIENT_KEY')
+MIDTRANS_SERVER_KEY = os.getenv('MIDTRANS_SERVER_KEY')
+
+# testing sandbox
+MIDTRANS_IS_PRODUCTION = os.getenv('MIDTRANS_IS_PRODUCTION', 'False') == 'True'
 
 # Agar frontend bisa baca token CSRF dari cookie
 CSRF_COOKIE_HTTPONLY = False 

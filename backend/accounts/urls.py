@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.decorators.csrf import csrf_exempt # Tambahkan import ini
 from . import api_views 
 from .pdf_views import agent_ticket_pdf as download_pdf_views
 
@@ -7,7 +8,7 @@ from .api.master_data import search_schedule
 from .api.booking import create_booking_agent
 
 urlpatterns = [
-    # 1. AUTHENTICATION (Pastikan pakai prefix 'auth.')
+    # 1. AUTHENTICATION
     path('login-admin-api/', auth.login_admin_api, name='login_admin_api'),
     path('logout-admin/', auth.logout_admin),
     path('login-agent/', auth.login_agent),
@@ -42,9 +43,8 @@ urlpatterns = [
     path('agent/jadwal/', agent.agent_jadwal_list),
     path("agent/tickets/", agent.agent_ticket_list), 
     path('agent/periode/<int:periode_id>/detail/', agent.agent_periode_detail, name='agent_periode_detail'),
-    
 
-    # 4. REFACTORING & PUBLIC
+    # 4. REFACTORING & PUBLIC (USER & MASTER DATA)
     path('schedule/search/', search_schedule), 
     path('booking/agent/', create_booking_agent),
     path("user/<int:user_id>/profile/", user.get_user_profile),
@@ -54,5 +54,9 @@ urlpatterns = [
     path('jadwal/search/', user.user_jadwal_search),
     path('jadwal/<int:pk>/seats/', user.user_jadwal_seats),
 
+    # 5. ORDER & WEBHOOK (FIXED CSRF)
     path('user/order/create/', user.user_create_order, name='user-create-order'),
+    
+    # Bungkus fungsi webhook dengan csrf_exempt di sini
+    path('midtrans-webhook/', csrf_exempt(user.midtrans_webhook), name='midtrans_webhook'),
 ]

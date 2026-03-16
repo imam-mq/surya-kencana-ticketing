@@ -1,22 +1,30 @@
 import json
 import math
+import uuid
+import midtransclient
 from datetime import datetime
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.decorators import api_view, permission_classes
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from rest_framework.response import Response
-from accounts.models import Jadwal, Tiket, Promosi, Pemesanan 
 from django.db import transaction
 from django.utils import timezone
 
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.response import Response
 
-from accounts.models import Jadwal, Tiket, Promosi
+from accounts.models import Jadwal, Tiket, Promosi, Pemesanan
 from accounts.serializers import ScheduleOutSerializer, PromoSerializer
 
 User = get_user_model()
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return
 
 def _parse_date(s):
     try:
@@ -122,89 +130,135 @@ def user_jadwal_seats(request, pk):
         return JsonResponse([mk_item(s) for s in seats], safe=False)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=404)
-    
 
 @api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication, BasicAuthentication])
 @permission_classes([IsAuthenticated])
 def user_create_order(request):
     user = request.user
     data = request.data
-
     jadwal_id = data.get('jadwal_id')
-    penumpang_list = data.get('penumpang') # mengambil data {kursi, nama, nik, nomor telepon & jenis kelamin}
+    penumpang_list = data.get('penumpang') 
     promosi_id = data.get('promosi_id')
 
     try:
         jadwal = Jadwal.objects.get(id=jadwal_id)
-    except Jadwal.DoesNotExist:
-        return Response({'error': 'Jadwal tidak ditemukan'}, status=404)
+        harga_per_tiket = int(jadwal.harga) 
+        jumlah_tiket = len(penumpang_list)
+        total_harga = harga_per_tiket * jumlah_tiket
+        jumlah_diskon = 0
+        promosi = None
 
-    # harga awal
-    harga_per_tiket = jadwal.harga
-    jumlah_tiket = len(penumpang_list)
-    total_harga = harga_per_tiket * jumlah_tiket
-
-    jumlah_diskon = 0
-    promosi = None
-
-    # 2. Pengecekan Promo (Voucher)
-    if promosi_id:
-        try:
+        if promosi_id:
             promosi = Promosi.objects.get(id=promosi_id, status='active')
             hari_ini = timezone.now().date()
-            
-            # mengecek apakah promo masih active
             if promosi.tanggal_mulai <= hari_ini <= promosi.tanggal_selesai:
-                jumlah_diskon = (total_harga * promosi.persen_diskon) / 100
+                # Gunakan pembulatan bulat murni
+                jumlah_diskon = (total_harga * promosi.persen_diskon) // 100
             else:
-                return Response({'error': 'Maaf, masa berlaku promo ini sudah habis.'}, status=400)
-                
-        except Promosi.DoesNotExist:
-            return Response({'error': 'Voucher tidak valid.'}, status=400)
+                return Response({'error': 'Masa berlaku promo habis'}, status=400)
 
-    harga_akhir = total_harga - jumlah_diskon
+        harga_akhir = int(total_harga - jumlah_diskon)
 
-    # menyimpan Database
-    try:
         with transaction.atomic():
-            # Pemesanan
             pemesanan = Pemesanan.objects.create(
-                pembeli=user,
-                peran_pembeli='user',
-                jadwal=jadwal,
-                promosi=promosi,
-                total_harga=total_harga,
-                jumlah_diskon=jumlah_diskon,
-                harga_akhir=harga_akhir,
-                status_pembayaran='pending',
-                metode_pembayaran='midtrans' # Placeholder sebelum midtrans merespon
+                pembeli=user, peran_pembeli='user', jadwal=jadwal,
+                promosi=promosi, total_harga=total_harga, jumlah_diskon=jumlah_diskon,
+                harga_akhir=harga_akhir, status_pembayaran='pending', metode_pembayaran='midtrans'
             )
 
-            # data tiket
             for p in penumpang_list:
-                
                 if Tiket.objects.filter(jadwal=jadwal, nomor_kursi=p['kursi']).exists():
-                    raise Exception(f"Waduh! Kursi {p['kursi']} baru saja dipesan orang lain. Silakan pilih kursi lain.")
-
+                    raise Exception(f"Kursi {p['kursi']} sudah dipesan orang lain.")
+                
+                kode_unik = f"TKT-{timezone.now().strftime('%y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
                 Tiket.objects.create(
-                    pemesanan=pemesanan,
-                    jadwal=jadwal,
-                    nomor_kursi=p['kursi'],
-                    nama_penumpang=p['nama'],
-                    ktp_penumpang=p['nik'],
-                    telepon_penumpang=p.get('telepon', ''),
-                    jenis_kelamin_penumpang=p.get('gender', ''),
-                    harga_kursi=harga_per_tiket
+                    pemesanan=pemesanan, jadwal=jadwal, nomor_kursi=p['kursi'],
+                    kode_tiket=kode_unik, nama_penumpang=p['nama'], ktp_penumpang=p['nik'],
+                    telepon_penumpang=p.get('telepon', ''), jenis_kelamin_penumpang=p.get('gender', '')
                 )
 
-        # jika succes akan menampilkan
-        return Response({
-            'success': True,
-            'message': 'Pesanan berhasil diamankan!',
-            'order_id': pemesanan.id,
-            'harga_akhir': pemesanan.harga_akhir
-        })
+            snap = midtransclient.Snap(
+                is_production=settings.MIDTRANS_IS_PRODUCTION,
+                server_key=settings.MIDTRANS_SERVER_KEY
+            )
+            
+            # POTONG NAMA ITEM (Max 50 Karakter)
+            nama_tiket = f"Tkt {jadwal.asal[:15]}-{jadwal.tujuan[:15]}"
+            
+            item_details = [
+                {
+                    "id": f"SCH-{jadwal.id}",
+                    "price": harga_per_tiket,
+                    "quantity": jumlah_tiket,
+                    "name": nama_tiket
+                }
+            ]
+            
+            if jumlah_diskon > 0:
+                item_details.append({
+                    "id": f"PRM-{promosi.id}",
+                    "price": -int(jumlah_diskon), # Harus Minus & Int
+                    "quantity": 1,
+                    "name": f"Promo {promosi.nama[:20]}"
+                })
 
+            midtrans_order_id = f"SK-{pemesanan.id}-{uuid.uuid4().hex[:4].upper()}"
+            param = {
+                "transaction_details": {
+                    "order_id": midtrans_order_id, 
+                    "gross_amount": harga_akhir # Total sinkron dengan sum item_details
+                },
+                "expiry": {"unit": "minutes", "duration": 5},
+                "customer_details": {"first_name": user.username, "email": user.email},
+                "item_details": item_details 
+            }
+            
+            transaction_midtrans = snap.create_transaction(param)
+            snap_token = transaction_midtrans['token']
+
+        return Response({
+            'success': True, 'order_id': pemesanan.id, 
+            'snap_token': snap_token, 'harga_akhir': harga_akhir
+        })
     except Exception as e:
-        # jika kursi sudah di isi oleh orang lain maka tidak bisa melanjutkan pembayaran
         return Response({'error': str(e)}, status=400)
+
+
+@csrf_exempt
+@require_POST
+def midtrans_webhook(request):
+    try:
+        data = json.loads(request.body)
+        print(f"--- DEBUG: Laporan Midtrans Masuk ---")
+        
+        order_id_midtrans = data.get('order_id')
+        status_transaksi = data.get('transaction_status', '').lower()
+        
+        if not order_id_midtrans:
+            return JsonResponse({'status': 'Order ID missing'}, status=400)
+
+        parts = order_id_midtrans.split('-')
+        if len(parts) < 2:
+            return JsonResponse({'status': 'Invalid Format'}, status=400)
+            
+        order_id_db = parts[1] 
+        pemesanan = Pemesanan.objects.get(id=order_id_db)
+
+        if status_transaksi in ['settlement', 'capture']:
+            pemesanan.status_pembayaran = 'success'
+        elif status_transaksi == 'pending':
+            pemesanan.status_pembayaran = 'pending'
+        elif status_transaksi == 'expire':
+            pemesanan.status_pembayaran = 'expired'
+        elif status_transaksi in ['cancel', 'deny', 'failure']:
+            pemesanan.status_pembayaran = 'failed'
+            
+        pemesanan.save()
+        print(f"Update Berhasil: {order_id_db} -> {pemesanan.status_pembayaran}")
+        return JsonResponse({'status': 'OK'}, status=200)
+        
+    except Pemesanan.DoesNotExist:
+        return JsonResponse({'status': 'Not Found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': str(e)}, status=500)

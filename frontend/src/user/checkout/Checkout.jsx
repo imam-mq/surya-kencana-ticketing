@@ -13,15 +13,19 @@ const Checkout = ({ data, onBack }) => {
   const [promoTerpilih, setPromoTerpilih] = useState(null);
   const [showPromoList, setShowPromoList] = useState(false);
   
-  // 🔴 1. State untuk menampung Promo Asli dari Django
+  // menampung promo dari backend
   const [promos, setPromos] = useState([]);
   const [loadingProses, setLoadingProses] = useState(false);
 
-  // 🔴 2. Ambil data Promo yang statusnya 'active' saat layar ini dibuka
+  // mengambil fetch data promo yang active
   useEffect(() => {
     const fetchPromos = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/accounts/user/active-promo/");
+        // fetch api untuk promo
+        const res = await fetch("http://127.0.0.1:8000/api/accounts/user/active-promo/", {
+          credentials: "include"
+        });
+        
         const data = await res.json();
         setPromos(Array.isArray(data) ? data : []);
       } catch (error) {
@@ -45,9 +49,9 @@ const Checkout = ({ data, onBack }) => {
     setShowPromoList(false);
   };
 
-  // 🔴 3. Fungsi Tembak Data ke API user_create_order
+  
   const handleCheckout = async () => {
-    // Validasi: Pastikan form nama dan NIK tidak kosong
+    
     const isPenumpangValid = penumpang.every(p => p.nama.trim() !== "" && p.nik.trim() !== "");
     if (!isPenumpangValid) {
       alert("Mohon lengkapi Nama dan NIK semua penumpang terlebih dahulu!");
@@ -55,9 +59,6 @@ const Checkout = ({ data, onBack }) => {
     }
 
     setLoadingProses(true);
-
-    // Ambil token login User (Sesuaikan dengan cara Abang nyimpen token, biasanya di localStorage)
-    const token = localStorage.getItem("token"); 
 
     const payload = {
       jadwal_id: trip.id,
@@ -68,9 +69,9 @@ const Checkout = ({ data, onBack }) => {
     try {
       const res = await fetch("http://127.0.0.1:8000/api/accounts/user/order/create/", {
         method: "POST",
+        credentials: "include", 
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // Wajib ada karena pakai IsAuthenticated
         },
         body: JSON.stringify(payload)
       });
@@ -78,10 +79,30 @@ const Checkout = ({ data, onBack }) => {
       const responseData = await res.json();
       
       if (res.ok) {
-        alert("Mantap! Pesanan berhasil dibuat dengan ID: " + responseData.order_id);
-        // Nanti di sini kita arahkan ke halaman Midtrans
+        // AMBIL TOKEN DARI BACKEND
+        const snapToken = responseData.snap_token;
+
+        // MIDTRANS
+        window.snap.pay(snapToken, {
+          onSuccess: function(result) {
+            alert("Pembayaran Berhasil!");
+            console.log(result);
+          },
+          onPending: function(result) {
+            alert("Menunggu pembayaran Anda...");
+            console.log(result);
+          },
+          onError: function(result) {
+            alert("Pembayaran Gagal!");
+            console.log(result);
+          },
+          onClose: function() {
+            alert('Anda menutup layar pembayaran sebelum selesai.');
+          }
+        });
+
       } else {
-        alert("Gagal: " + (responseData.error || "Terjadi kesalahan sistem"));
+        alert("Gagal: " + (responseData.error || "Terjadi kesalahan"));
       }
     } catch (error) {
       alert("Terjadi kesalahan jaringan. Cek koneksi internet Anda.");
@@ -91,7 +112,7 @@ const Checkout = ({ data, onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
+    <div className="min-h-screen bg-gray-50 py-16">
       <div className="max-w-6xl mx-auto px-4">
         
         <button onClick={onBack} className="flex items-center text-blue-600 hover:text-blue-800 font-medium mb-6 transition">
@@ -129,8 +150,8 @@ const Checkout = ({ data, onBack }) => {
                             <input type="text" value={p.nik} onChange={(e) => handlePenumpangChange(index, "nik", e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Masukkan NIK" />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Nomor Induk Kependudukan (NIK)</label>
-                            <input type="text" value={p.nik} onChange={(e) => handlePenumpangChange(index, "telepon", e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Masukkan Nomor Telpon Anda" />
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Nomor telpon</label>
+                            <input type="text" value={p.telepon} onChange={(e) => handlePenumpangChange(index, "telepon", e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Masukkan Nomor Telpon Anda" />
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-600 mb-1">Jenis Kelamin</label>
@@ -214,7 +235,7 @@ const Checkout = ({ data, onBack }) => {
                 disabled={loadingProses}
                 className={`w-full py-3 rounded-xl font-bold text-sm transition shadow-md ${loadingProses ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
               >
-                {loadingProses ? 'Memproses...' : 'Lanjut Pembayaran (Midtrans)'}
+                {loadingProses ? 'Memproses...' : 'Lanjut Pembayaran'}
               </button>
             </div>
           </div>
