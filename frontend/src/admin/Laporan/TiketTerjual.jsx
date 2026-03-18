@@ -9,7 +9,7 @@ const TiketTerjual = () => {
   const [endDate, setEndDate] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
 
-  // Sample data grouped by date
+  
   const laporanData = [
     {
       tanggal: "18 Okt 2025",

@@ -33,7 +33,6 @@ const AgentTransaksi = () => {
     }
   };
 
-  // Jalankan saat pertama kali load
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,7 +193,6 @@ const AgentTransaksi = () => {
             <p>
               Menampilkan <span className="font-semibold text-gray-900">{agentData.length}</span> agent
             </p>
-            {/* Pagination UI - Seperti yang diminta pada gambar */}
             <div className="flex items-center gap-1">
                 <button className="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100"><FaChevronLeft className="text-xs"/></button>
                 <button className="w-8 h-8 flex items-center justify-center rounded-md bg-blue-600 text-white font-bold shadow-sm">1</button>

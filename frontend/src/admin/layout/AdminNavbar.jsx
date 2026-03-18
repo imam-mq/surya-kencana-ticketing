@@ -74,9 +74,9 @@ const AdminNavbar = () => {
         </div>
       </div>
 
-      {/* Right: bell + user + logout */}
+      {/*  bell + user + logout */}
       <div className="flex items-center gap-2">
-        {/* Notification bell */}
+      
         <button
           className="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-150"
           style={{ background: "rgba(255,255,255,0.08)" }}

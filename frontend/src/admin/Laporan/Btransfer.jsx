@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios"; 
 
-// HANYA IMPORT DARI CHAKRA UI
+// CHAKRA UI
 import {
   Box, Flex, Heading, Text, Input, Button, 
   TableContainer, Table, Thead, Tbody, Tr, Th, Td, Badge,
@@ -182,7 +182,7 @@ const Btransfer = () => {
         open={openModal} 
         onClose={() => { 
           setOpenModal(false); 
-          fetchTransferData(); // Otomatis refresh tabel kalau modal ditutup (habis validasi)
+          fetchTransferData(); // Otomatis refresh tabel kalau modal ditutup
         }} 
         data={selectedItem} 
       />

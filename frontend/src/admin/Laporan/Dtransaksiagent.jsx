@@ -10,7 +10,6 @@ const Dtransaksiagent = () => {
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState("");
-  // Ubah initial state menjadi array kosong
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
