@@ -52,3 +52,7 @@ media/
 backend/bukti_setoran/
 
 backend/accounts/models.py
+
+# Aplikasi / Binaries
+*.exe
+ngrok.exe

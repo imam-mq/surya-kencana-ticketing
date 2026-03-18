@@ -8,7 +8,7 @@ from .models import (
 
 User = get_user_model()
 
-# ================= USER & PROFILE =================
+# USER & PROFILE
 class PenggunaSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -18,25 +18,25 @@ class PenggunaSerializer(serializers.ModelSerializer):
 class AgentSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        # Kita tambahkan 'password' dan 'peran' agar bisa diinput
+        # add agen diinput
         fields = [
             'id', 'username', 'email', 'nama_lengkap', 'telepon', 
             'alamat', 'no_ktp', 'jenis_kelamin', 'kota_kab', 
             'password', 'peran'
         ]
         extra_kwargs = {
-            'password': {'write_only': True, 'required': False}, # Password tidak akan tampil saat di-GET
+            'password': {'write_only': True, 'required': False}, # jika GET password tidak akan dimunculkan
             'id': {'read_only': True}
         }
 
     def create(self, validated_data):
-        # Ambil password dari data yang dikirim Admin
+        # mengambil password dari data yang dibuat admin
         password = validated_data.pop('password', None)
         
-        # Buat instance user
+        # instance user
         instance = self.Meta.model(**validated_data)
         
-        # Lakukan HASHING password (Enkripsi)
+        # password (Enkripsi)
         if password is not None:
             instance.set_password(password)
         
@@ -47,7 +47,6 @@ class AgentSerializer(serializers.ModelSerializer):
         # Cek jika ada request ganti password
         password = validated_data.pop('password', None)
         
-        # Update field lain (nama, telepon, dll)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
             
@@ -58,7 +57,7 @@ class AgentSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-# ================= BUS & JADWAL =================
+# BUS & JADWAL
 class BusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bus
@@ -70,7 +69,7 @@ class ScheduleOutSerializer(serializers.ModelSerializer):
 
     kapasitas = serializers.IntegerField(source='bus.total_kursi', read_only=True)
     
-    # 2. Tambahkan Hitungan Tiket Terjual
+    #Hitungan Tiket Terjual
     terjual = serializers.SerializerMethodField()
 
     class Meta:
@@ -102,7 +101,7 @@ class PromoSerializer(serializers.ModelSerializer):
         model = Promosi
         fields = '__all__'
 
-# ================= BOOKING & TICKET =================
+# BOOKING & TICKET
 class TiketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tiket
@@ -128,7 +127,7 @@ class AgentBookingSerializer(serializers.Serializer):
     seats = serializers.ListField(child=serializers.CharField())
     passengers = serializers.ListField(child=serializers.DictField())
 
-# ================= KOMISI & SETORAN =================
+# KOMISI & SETORAN
 class KomisiAgenSerializer(serializers.ModelSerializer):
     class Meta:
         model = KomisiAgen
@@ -154,7 +153,7 @@ class SetoranAgentAdminSerializer(serializers.ModelSerializer):
             'jumlah', 'bukti_file', 'status', 'divalidasi_oleh'
         ]
 
-# ================= TIKET TERBIT =================
+# TIKET TERBIT
 class AgentTicketHistorySerializer(serializers.ModelSerializer):
     bus_name = serializers.CharField(source='jadwal.bus.nama', read_only=True)
     bus_code = serializers.CharField(source='jadwal.bus.tipe', read_only=True)
@@ -190,7 +189,7 @@ class AgentTicketHistorySerializer(serializers.ModelSerializer):
 
 
 
-# ================= Komisilaporan =================
+# Komisilaporan
 
 class AgentCommissionReportSerializer(serializers.ModelSerializer):
     jadwal = serializers.SerializerMethodField()

@@ -14,7 +14,7 @@ from .models import Tiket, Pemesanan
 def agent_ticket_pdf(request):
     user = request.user
 
-    # Verifikasi peran (Admin dan Agent boleh download)
+    # Verifikasi role
     peran = getattr(user, "peran", None)
     if peran not in ["agent", "admin"]:
         return Response({"error": "Akses ditolak. Anda bukan Admin/Agent."}, status=403)

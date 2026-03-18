@@ -7,7 +7,7 @@ from accounts.authenticate import CsrfExemptSessionAuthentication
 
 @api_view(['GET'])
 @authentication_classes([CsrfExemptSessionAuthentication])
-@permission_classes([AllowAny]) # Boleh diakses siapa saja (Public)
+@permission_classes([AllowAny])
 def search_schedule(request):
     asal = request.query_params.get('asal')
     tujuan = request.query_params.get('tujuan')

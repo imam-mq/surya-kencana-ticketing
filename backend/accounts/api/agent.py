@@ -51,7 +51,7 @@ def agent_dashboard_stats(request):
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
-    # Ambil SEMUA riwayat komisi agen
+    # riwayat komisi agen
     komisi = KomisiAgen.objects.filter(agen=user)
     
     # FILTER TANGGAL
@@ -60,7 +60,7 @@ def agent_dashboard_stats(request):
     if end_date:
         komisi = komisi.filter(dibuat_pada__date__lte=end_date)
         
-    # DEFAULT HARI INI JIKA TIDAK ADA FILTER
+    # menampilkan data hari ini jika tidak di filter
     if not start_date and not end_date:
         hari_ini = timezone.now().date()
         komisi = komisi.filter(dibuat_pada__date=hari_ini)
@@ -70,12 +70,11 @@ def agent_dashboard_stats(request):
     else:
         periode_text = f"{start_date} s/d {end_date}"
     
-    # 👇 PERBAIKAN LOGIKA HITUNGAN DI SINI 👇
     
-    # 1. Total Penumpang = Menghitung jumlah kursi (karena 1 row komisi = 1 kursi)
+    # Total Penumpang =  jumlah kursi 
     total_penumpang = komisi.count()
     
-    # 2. Total Tiket (Transaksi) = Menghitung jumlah Struk/Pemesanan yang unik (tidak dobel)
+    # Total Tiket
     total_tiket = komisi.values('tiket__pemesanan').distinct().count()
     
     # 3. Hitung Uang
@@ -83,11 +82,10 @@ def agent_dashboard_stats(request):
     total_kotor = sum([float(k.tiket.jadwal.harga) for k in komisi])
     tagihan_setoran = total_kotor - float(total_komisi)
 
-    # Kirim ke React dengan 2 variabel berbeda
     return Response({
         "periode": periode_text,
-        "tiket_aktif": total_tiket,         # Ini jumlah Struk/Transaksi
-        "total_penumpang": total_penumpang, # Ini jumlah Orang/Kursi
+        "tiket_aktif": total_tiket,         # jumlah Struk/Transaksi
+        "total_penumpang": total_penumpang, # jumlah Orang/Kursi
         "total_komisi_pending": total_komisi,
         "tagihan_setoran": tagihan_setoran
     })
@@ -110,12 +108,12 @@ def agent_create_booking(request):
     try:
         with transaction.atomic():
             total_harga = jadwal.harga * len(seats)
-            persen_komisi = 15.0 # Default 15% sesuai kesepakatan
+            persen_komisi = 15.0 # Default 15% komisi
             
             if hasattr(request.user, 'profil_agen'):
                 persen_komisi = float(request.user.profil_agen.persen_komisi)
 
-            # 1. Buat Induk Pemesanan
+            # Pemesanan
             pemesanan = Pemesanan.objects.create(
                 pembeli=request.user,
                 peran_pembeli='agent',
@@ -126,7 +124,7 @@ def agent_create_booking(request):
                 harga_akhir=total_harga
             )
 
-            # 2. Buat Tiket & Catat Komisi per Tiket
+            # Tiket & Catat Komisi per Tiket
             for i, seat in enumerate(seats):
                 p = passengers[i]
                 tiket = Tiket.objects.create(
@@ -153,11 +151,11 @@ def agent_create_booking(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def agent_ticket_list(request):
-    # Mengambil riwayat booking milik agen yang sedang login
+    # mengambil data agen dan filter data tiket
     user = request.user
     bookings = Pemesanan.objects.filter(pembeli=user).order_by('-dibuat_pada')
     
-    # Gunakan serializer yang sudah mendukung field bus_name, departure_date, dll
+    # mengubah database ke format json
     serializer = AgentTicketHistorySerializer(bookings, many=True)
     return Response(serializer.data)
 
@@ -188,7 +186,7 @@ def agent_submit_transfer(request):
             
             total_kotor = sum([float(k.tiket.jadwal.harga) for k in komisi_unsettled])
 
-            # 1. Buat Periode Rekapan
+            # Periode Rekapan
             periode = PeriodeKomisi.objects.create(
                 agen=request.user,
                 tanggal_mulai=timezone.now().date(),
@@ -199,7 +197,7 @@ def agent_submit_transfer(request):
                 status='waiting_validation'
             )
 
-            # 2. Masukkan Tiket ke Detail Periode
+            # input Tiket ke Detail Periode
             for k in komisi_unsettled:
                 ItemPeriodeKomisi.objects.create(
                     periode=periode,
@@ -207,7 +205,7 @@ def agent_submit_transfer(request):
                     jumlah_komisi=k.jumlah_komisi
                 )
 
-            # 3. Buat Bukti Transfer
+            #  Bukti Transfer
             TransferKomisi.objects.create(
                 periode=periode,
                 tanggal_transfer=timezone.now(),
@@ -216,7 +214,7 @@ def agent_submit_transfer(request):
                 status='pending'
             )
 
-            # 4. Tandai Komisi sudah diproses
+            # proses komisi
             komisi_unsettled.update(status='included_in_period')
 
             return Response({"success": True}, status=201)
@@ -233,14 +231,14 @@ def agent_ticket_report(request):
 
     user = request.user
     
-    # Ambil parameter tanggal dari filter kalender React
+    # parameter filter kalender
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
-    # Cari tiket agent yang berstatus 'paid' (Lunas)
+    # filter tiket agent yang paid
     qs = Pemesanan.objects.filter(pembeli=user, status_pembayaran='paid').order_by('-dibuat_pada')
 
-    # Logika untuk fitur filter tanggal
+    # filter tanggal
     if start_date:
         qs = qs.filter(dibuat_pada__date__gte=start_date)
     if end_date:
@@ -261,13 +259,11 @@ def agent_commission_report(request):
     user = request.user
     response_data = []
 
-    # -----------------------------------------------------
-    # 1. CEK TAGIHAN AKTIF (Status 'unsettled')
-    # -----------------------------------------------------
+    # 1. CEK TAGIHAN AKTIF
     komisi_unsettled = KomisiAgen.objects.filter(agen=user, status='unsettled')
     
     if komisi_unsettled.exists():
-        # Hitung statistik dari tiket yang belum dibayar
+        # Hitungtiket yang belum dibayar
         stats = komisi_unsettled.aggregate(
             total_komisi=Sum('jumlah_komisi'),
             periode_awal=Min('tiket__pemesanan__dibuat_pada'),
@@ -278,7 +274,7 @@ def agent_commission_report(request):
         
         # Masukkan sebagai baris pertama (BELUM BAYAR)
         response_data.append({
-            "id": 0, # ID 0 penanda ini bukan dari tabel PeriodeKomisi
+            "id": 0, 
             "periode_awal": stats['periode_awal'].strftime('%d %b %Y') if stats['periode_awal'] else "-",
             "periode_akhir": stats['periode_akhir'].strftime('%d %b %Y') if stats['periode_akhir'] else "-",
             "total_kursi": total_tiket,
@@ -292,7 +288,7 @@ def agent_commission_report(request):
     # -----------------------------------------------------
     # 2. AMBIL RIWAYAT SETORAN (Dari tabel PeriodeKomisi)
     # -----------------------------------------------------
-    # Ambil filter tanggal jika ada
+    # filter tanggal
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
@@ -304,17 +300,17 @@ def agent_commission_report(request):
         riwayat_qs = riwayat_qs.filter(tanggal_selesai__lte=end_date)
 
     for riwayat in riwayat_qs:
-        # Konversi status dari bahasa database ke bahasa Frontend
+        # konversi status data frontend ke backend
         status_frontend = "MENUNGGU"
         if riwayat.status == "waiting_validation": status_frontend = "MENUNGGU"
         elif riwayat.status == "approved": status_frontend = "DITERIMA"
         elif riwayat.status == "rejected": status_frontend = "DITOLAK"
 
-        # Ambil bukti transfer jika ada (dari tabel relasi)
+        # bukti transfer
         transfer = riwayat.transfer.first()
         bukti_url = request.build_absolute_uri(transfer.bukti_file.url) if transfer and transfer.bukti_file else None
 
-        # Tambahkan ke daftar respon
+        # respon data
         response_data.append({
             "id": riwayat.id,
             "periode_awal": riwayat.tanggal_mulai.strftime('%d %b %Y'),
@@ -333,21 +329,20 @@ def agent_commission_report(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def agent_periode_detail(request, periode_id):
-    # 1. Memastikan yang akses ini adalah agent
+    # akses agent
     if not _is_agent(request.user): 
         return Response({"error": "Akses ditolak"}, status=403)
 
     user = request.user
 
-    # 2. Cari data PeriodeKomisi berdasarkan ID
+    # search periode komisi
     periode = get_object_or_404(PeriodeKomisi, id=periode_id, agen=user)
 
-    # 3. Ambil detail tiket/penumpang yang masuk dalam periode ini
+    # mengambil data tiket penumpang yang pesan hari ini 
     items = ItemPeriodeKomisi.objects.filter(periode=periode).select_related(
         'tiket', 'tiket__jadwal', 'tiket__pemesanan'
     )
 
-    # 4. Susun data penumpang untuk dikirim ke Frontend
     detail_penumpang = []
     for item in items:
         tiket = item.tiket
@@ -367,7 +362,7 @@ def agent_periode_detail(request, periode_id):
             "komisi_agen": float(item.jumlah_komisi)
         })
 
-    # 5. Menggabungkan informasi ringkasan periode dan daftar penumpang
+    # respon data priode penumpang
     response_data = {
         "informasi_periode": {
             "id": periode.id,

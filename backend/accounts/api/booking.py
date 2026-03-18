@@ -15,11 +15,11 @@ from accounts.authenticate import CsrfExemptSessionAuthentication
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def create_booking_agent(request):
-    # 1. Validasi Agent
+    # Validasi Agent
     if getattr(request.user, 'peran', 'user') != 'agent':
         return Response({"error": "Hanya Agent yang boleh akses ini"}, status=403)
 
-    # 2. Validasi Input
+    # Validasi Input
     serializer = AgentBookingSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=400)
@@ -34,15 +34,15 @@ def create_booking_agent(request):
 
     try:
         with transaction.atomic():
-            # A. Cek Kursi
+            # Cek Kursi
             booked_seats = Tiket.objects.filter(jadwal=jadwal, nomor_kursi__in=seats).exists()
             if booked_seats:
                 return Response({"error": "Kursi sudah terisi!"}, status=400)
 
-            # B. Hitung Harga
+            # Hitung Harga
             total_harga = jadwal.harga * len(seats)
             
-            # C. Buat Booking
+            # Buat Booking
             pemesanan = Pemesanan.objects.create(
                 pembeli=request.user,
                 peran_pembeli='agent',
@@ -53,7 +53,7 @@ def create_booking_agent(request):
                 harga_akhir=total_harga
             )
 
-            # D. Ambil Persen Komisi
+            # Ambil Persen Komisi
             try:
                 persen_komisi = request.user.profil_agen.persen_komisi
             except:
@@ -61,7 +61,7 @@ def create_booking_agent(request):
 
             list_tiket = []
             
-            # E. Loop Tiket & Komisi
+            # Loop Tiket & Komisi
             for i, seat_num in enumerate(seats):
                 pax = passengers[i]
                 kode_unik = f"TKT-{timezone.now().strftime('%y%m%d')}-{uuid.uuid4().hex[:6].upper()}"

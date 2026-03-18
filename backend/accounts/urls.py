@@ -8,7 +8,7 @@ from .api.master_data import search_schedule
 from .api.booking import create_booking_agent
 
 urlpatterns = [
-    # 1. AUTHENTICATION
+    # untuk auth login pengguna
     path('login-admin-api/', auth.login_admin_api, name='login_admin_api'),
     path('logout-admin/', auth.logout_admin),
     path('login-agent/', auth.login_agent),
@@ -19,7 +19,7 @@ urlpatterns = [
     path('register/', auth.register_user),
     path('get-csrf/', api_views.get_csrf), 
 
-    # 2. ADMIN FEATURES
+    # fitur admin
     path('users/', admin.user_list),
     path('agents/', admin.agent_list),
     path('agents/add/', admin.add_agent),
@@ -34,7 +34,7 @@ urlpatterns = [
     path('admin/laporan-transaksi/<int:pk>/detail/', admin.admin_laporan_transaksi_detail),
     path("admin/validasi-setoran/<int:pk>/", admin.admin_validasi_setoran),
 
-    # 3. AGENT FEATURES
+    # fitur agent
     path("agent/download-tiket-pdf/", download_pdf_views),
     path('agent/dashboard-stats/', agent.agent_dashboard_stats),
     path("agent/ticket-report/", agent.agent_ticket_report),
@@ -44,7 +44,7 @@ urlpatterns = [
     path("agent/tickets/", agent.agent_ticket_list), 
     path('agent/periode/<int:periode_id>/detail/', agent.agent_periode_detail, name='agent_periode_detail'),
 
-    # 4. REFACTORING & PUBLIC (USER & MASTER DATA)
+    # end point web profile
     path('schedule/search/', search_schedule), 
     path('booking/agent/', create_booking_agent),
     path("user/<int:user_id>/profile/", user.get_user_profile),
@@ -54,7 +54,7 @@ urlpatterns = [
     path('jadwal/search/', user.user_jadwal_search),
     path('jadwal/<int:pk>/seats/', user.user_jadwal_seats),
 
-    # 5. ORDER & WEBHOOK (FIXED CSRF)
+    # endpoint user creat order
     path('user/order/create/', user.user_create_order, name='user-create-order'),
     
     # Bungkus fungsi webhook dengan csrf_exempt di sini
