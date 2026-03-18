@@ -13,7 +13,7 @@ from accounts.models import (
     Pemesanan, Tiket, PeriodeKomisi, TransferKomisi
 )
 
-# IMPORT SERIALIZER BARU
+
 from accounts.serializers import (
     AgentSerializer, 
     BusSerializer, 
@@ -23,12 +23,12 @@ from accounts.serializers import (
     SetoranAgentAdminSerializer
 )
 
-# IMPORT AUTH BYPASS
+
 from accounts.authenticate import CsrfExemptSessionAuthentication
 
 User = get_user_model()
 
-# ================= HELPER =================
+
 def is_admin(user):
     return getattr(user, 'peran', None) == 'admin' or user.is_staff
 
@@ -41,7 +41,7 @@ def user_list(request):
     if not is_admin(request.user):
         return Response({"error": "Unauthorized: Hanya Admin"}, status=403)
     
-    # GANTI 'dibuat_pada' menjadi 'date_joined'
+    # date_join
     users = Pengguna.objects.filter(peran='user').values(
         'id', 'username', 'email', 'nama_lengkap', 'telepon', 'date_joined'
     )
@@ -61,16 +61,16 @@ def agent_list(request):
 
 
 @api_view(['POST'])
-@authentication_classes([CsrfExemptSessionAuthentication]) # WAJIB ADA
+@authentication_classes([CsrfExemptSessionAuthentication]) 
 @permission_classes([IsAuthenticated])
 def add_agent(request):
-    # Pastikan helper is_admin sudah didefinisikan sebelumnya
+    
     if not is_admin(request.user):
         return Response({"error": "Forbidden: Akun Anda bukan Admin"}, status=403)
     
     serializer = AgentSerializer(data=request.data)
     if serializer.is_valid():
-        # Paksa set peran menjadi 'agent'
+        
         serializer.save(peran='agent') 
         return Response(serializer.data, status=201)
     return Response(serializer.errors, status=400)
@@ -119,7 +119,7 @@ def admin_jadwal_list_create(request):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def admin_jadwal_detail(request, pk):
-    # Gunakan helper is_admin (pastikan helper ini ada di atas file admin.py Abang)
+    
     if getattr(request.user, "peran", None) != "admin":
         return Response({"error": "Unauthorized"}, status=403)
 
@@ -148,7 +148,7 @@ def admin_detail_jadwal_penumpang(request, pk):
 
     jadwal = get_object_or_404(Jadwal, pk=pk)
     
-    # 🔴 PERBAIKAN: Membaca jumlah kursi dari tabel Bus secara otomatis
+    # melihat jumlah kursi dari tabel bus
     kapasitas = jadwal.bus.total_kursi if hasattr(jadwal, 'bus') and jadwal.bus else 0
     tiket_terjual = Tiket.objects.filter(jadwal=jadwal).count()
     kursi_tersedia = kapasitas - tiket_terjual
@@ -161,7 +161,7 @@ def admin_detail_jadwal_penumpang(request, pk):
         "waktu_keberangkatan": jadwal.waktu_keberangkatan.strftime("%H.%M WITA"),
         "harga_tiket": float(jadwal.harga),
         "status": "Active",
-        "kapasitas": kapasitas, # Sekarang dinamis sesuai tabel Bus!
+        "kapasitas": kapasitas,
         "kursi_tersedia": kursi_tersedia,
         "tiket_terjual": tiket_terjual
     }
@@ -253,34 +253,34 @@ def admin_setoran_list(request):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def admin_validasi_setoran(request, pk):
-    # Pastikan yang login admin
+    # login admin
     if getattr(request.user, "peran", None) != "admin":
         return Response({"error": "Unauthorized"}, status=403)
     
-    # 🔥 Frontend mengirim ID PeriodeKomisi, jadi cari dari periodenya
+    # mengirim id priode komisi
     periode = get_object_or_404(PeriodeKomisi, pk=pk)
-    transfer = periode.transfer.first() # Ambil transfernya
+    transfer = periode.transfer.first() 
 
     if not transfer:
         return Response({"error": "Data bukti transfer tidak ditemukan"}, status=404)
 
-    # 🔥 Tangkap payload 'aksi' dari React ('terima' atau 'tolak')
+    
     aksi = request.data.get('aksi')
 
     if aksi == 'terima':
         try:
             with transaction.atomic():
-                # 1. Update status transfer
+                # update status tf
                 transfer.status = 'approved'
                 transfer.divalidasi_oleh = request.user
                 transfer.divalidasi_pada = timezone.now()
                 transfer.save()
                 
-                # 2. Update status periode induk
+                
                 periode.status = 'approved'
                 periode.save()
                 
-                # 3. Update status komisi tiket menjadi 'paid' (LUNAS)
+                # updaate status komisi jk agen sudah tf akan menjadi lunas
                 from accounts.models import KomisiAgen
                 tiket_ids = periode.item.values_list('tiket_id', flat=True)
                 KomisiAgen.objects.filter(tiket_id__in=tiket_ids).update(status='paid')
@@ -290,7 +290,7 @@ def admin_validasi_setoran(request, pk):
             return Response({"error": str(e)}, status=500)
 
     elif aksi == 'tolak':
-        # Ubah status jadi ditolak dengan catatan audit lengkap
+       
         transfer.status = 'rejected'
         transfer.divalidasi_oleh = request.user
         transfer.divalidasi_pada = timezone.now()
@@ -308,32 +308,31 @@ def admin_validasi_setoran(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_laporan_transaksi(request):
-    # 1. Pastikan yang login benar-benar Admin
     if getattr(request.user, "peran", None) != "admin":
         return Response({"error": "Akses ditolak"}, status=403)
 
-    # 2. Tangkap parameter dari Frontend (React)
+    
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
     search_agent = request.GET.get('q')
 
-    # 3. Ambil data setoran (PeriodeKomisi) urut dari yang paling baru
+    
     qs = PeriodeKomisi.objects.all().order_by('-dibuat_pada')
 
-    # 4. Terapkan Filter Tanggal
+    # filter by tanggal
     if start_date:
         qs = qs.filter(tanggal_mulai__gte=start_date)
     if end_date:
         qs = qs.filter(tanggal_selesai__lte=end_date)
 
-    # 5. Terapkan Filter Pencarian Nama Agent
+    # filter by nama
     if search_agent:
         qs = qs.filter(
             Q(agen__username__icontains=search_agent) | 
             Q(agen__nama_lengkap__icontains=search_agent)
         )
 
-    # 6. Susun Data Sesuai Permintaan Frontend
+    # respon data frontend
     data = []
     for periode in qs:
         status_frontend = "MENUNGGU"
@@ -344,7 +343,7 @@ def admin_laporan_transaksi(request):
         elif periode.status == "waiting_validation":
             status_frontend = "MENUNGGU"
 
-        # 🔥 AMBIL DATA BUKTI TRANSFER
+        # data unuk bukti transfer
         transfer = periode.transfer.first() # Mengambil dari relasi related_name='transfer'
         bukti_url = transfer.bukti_file.url if transfer and transfer.bukti_file else None
 
@@ -353,11 +352,11 @@ def admin_laporan_transaksi(request):
             "periode_awal": periode.tanggal_mulai.strftime('%Y-%m-%d'),
             "periode_akhir": periode.tanggal_selesai.strftime('%Y-%m-%d'),
             "agent_name": periode.agen.nama_lengkap or periode.agen.username, 
-            "total_tagihan": float(periode.total_setor) + float(periode.total_komisi), # Kotor (Bruto)
+            "total_tagihan": float(periode.total_setor) + float(periode.total_komisi), 
             "total_komisi": float(periode.total_komisi),
-            "total_bayar": float(periode.total_setor), # 🔥 Ditambahkan untuk React (Nett Setoran)
+            "total_bayar": float(periode.total_setor), 
             "status": status_frontend,
-            "bukti_transfer": bukti_url # 🔥 Ditambahkan untuk Modal React
+            "bukti_transfer": bukti_url 
         })
 
     return Response(data)
@@ -377,8 +376,7 @@ def admin_laporan_transaksi_detail(request, pk):
         jadwal = tiket.jadwal if tiket else None
         bus = jadwal.bus if jadwal else None
         
-        # PENYESUAIAN SESUAI MODELS.PY ABANG
-        # Gunakan 'tipe' karena di model Bus Abang kolomnya bernama 'tipe'
+        
         info_bus = f"{bus.nama} [{bus.tipe}]" if bus else "Bus Tidak Ditemukan"
         
         rute_asal = jadwal.asal if jadwal else "-"
@@ -388,7 +386,7 @@ def admin_laporan_transaksi_detail(request, pk):
         
         data.append({
             "tanggal": tiket.pemesanan.dibuat_pada.strftime("%d %b %Y") if tiket and tiket.pemesanan else "-",
-            "bus": info_bus, # Sudah menggunakan bus.nama dan bus.tipe
+            "bus": info_bus, 
             "namaPenumpang": tiket.nama_penumpang if tiket else "-",
             "kursi": tiket.nomor_kursi if tiket else "-",
             "keterangan": rute_asal,

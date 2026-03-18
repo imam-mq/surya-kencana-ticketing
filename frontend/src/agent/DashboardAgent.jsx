@@ -88,23 +88,21 @@ const DashboardAgent = () => {
         }
 
         const fetchOptions = { credentials: "include" };
-
-        // 2. SIAPKAN PARAMETER URL (QUERY PARAMS)
         
-        // A. Parameter untuk Jadwal (Tabel Bawah)
+        // prameter tabel
         const paramsJadwal = new URLSearchParams({
             origin: search.origin,
             destination: search.destination,
             date: search.date
         }).toString();
 
-        // B. Parameter untuk Statistik (Card Atas)
+        // Parameter untuk Statistik (Card Atas)
         const paramsStats = new URLSearchParams({
             start_date: filterDate.start,
             end_date: filterDate.end
         }).toString();
 
-        // 3. PANGGIL API SECARA PARALEL (Hanya 1 kali panggil)
+        // api jadwal & dashboard
         const [resJadwal, resStats] = await Promise.all([
           fetch(`${API_BASE}/accounts/agent/jadwal/?${paramsJadwal}`, fetchOptions),
           fetch(`${API_BASE}/accounts/agent/dashboard-stats/?${paramsStats}`, fetchOptions) 
@@ -193,7 +191,7 @@ const DashboardAgent = () => {
             </div>
           </section>
 
-          {/* --- SECTION 2: TABEL JADWAL --- */}
+          {/* --- TABEL JADWAL --- */}
           <section>
             {/* Header: Judul + Form Pencarian */}
             <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
