@@ -20,7 +20,7 @@ const ManajemenPromo = () => {
       );
       const data = await response.json();
 
-      // ⛑️ SAFETY CHECK
+      
       if (Array.isArray(data)) {
         setPromos(data);
       } else {
@@ -53,7 +53,7 @@ const ManajemenPromo = () => {
       const res = await response.json();
       if (res.success || response.ok) {
         alert("Promo berhasil dihapus");
-        fetchPromos(); // Refresh promo list after delete
+        fetchPromos(); 
       } else {
         alert("Gagal menghapus promo");
       }
@@ -61,7 +61,7 @@ const ManajemenPromo = () => {
       console.error("Error delete promo:", error);
     }
 
-    setShowDeleteModal(false); // Hide modal after deletion
+    setShowDeleteModal(false); 
   };
 
   // Filter berdasarkan nama/judul

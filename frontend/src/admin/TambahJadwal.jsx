@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "./layout/Sidebar";
 import AdminNavbar from "./layout/AdminNavbar";
 
-// Pastikan port sesuai dengan backend Django
 const API = "http://127.0.0.1:8000/api/accounts";
 
 const TambahJadwal = () => {
@@ -22,12 +21,12 @@ const TambahJadwal = () => {
   const [saving, setSaving] = useState(false);
   const [loadingBus, setLoadingBus] = useState(true);
 
-  // 1. Fetch Bus dengan Credentials
+  //  Fetch Bus
   useEffect(() => {
     (async () => {
       try {
         setLoadingBus(true);
-        // CREDENTIALS: INCLUDE Wajib agar session admin terbaca
+        
         const res = await fetch(`${API}/admin/bus/`, {
             credentials: "include" 
         });
@@ -35,7 +34,6 @@ const TambahJadwal = () => {
         if (!res.ok) throw new Error(`Gagal memuat bus (HTTP ${res.status})`);
         
         const data = await res.json();
-        // Jangan pakai fallback dummy, biar ketahuan kalau error
         setBuses(Array.isArray(data) ? data : []); 
       } catch (e) {
         setErr(`Error Load Bus: ${e.message}`);
@@ -67,19 +65,11 @@ const TambahJadwal = () => {
     try {
       setSaving(true);
 
-      // 1. Gabungkan Date & Time menjadi satu string ISO (YYYY-MM-DDTHH:MM)
-      // Contoh: "2026-02-25" + "T" + "10:00" = "2026-02-25T10:00"
       const keberangkatan = `${form.date}T${form.time}`;
-
-      // 2. (Opsional) Set Waktu Kedatangan Otomatis (Misal +12 jam dari berangkat)
-      // Jika Backend membolehkan null, field ini bisa dihapus. 
-      // Tapi biar aman, kita set saja estimasi sampai.
       const arrivalDate = new Date(keberangkatan);
-      arrivalDate.setHours(arrivalDate.getHours() + 10); // Asumsi perjalanan 10 jam
+      arrivalDate.setHours(arrivalDate.getHours() + 10);
       const kedatangan = arrivalDate.toISOString(); 
 
-      // 3. MAPPING FIELD (PENTING!)
-      // Kiri: Nama field Backend (Django) | Kanan: Nama state Frontend (React)
       const payload = {
         bus: Number(form.bus),
         asal: form.origin,                  // origin -> asal
@@ -88,12 +78,11 @@ const TambahJadwal = () => {
         waktu_kedatangan: kedatangan,       // (Opsional, tapi sebaiknya ada)
         harga: Number(form.price),          // price -> harga
         status: form.status,
-        // capacity TIDAK PERLU dikirim, karena kapasitas ikut data Bus
       };
 
-      console.log("Mengirim Payload:", payload); // Cek di console browser
+      console.log("Mengirim Payload:", payload);
 
-      // 4. Kirim ke Backend
+      
       const res = await fetch(`${API}/admin/jadwal/`, {
         method: "POST",
         headers: { 
@@ -106,7 +95,7 @@ const TambahJadwal = () => {
       const data = await res.json();
       
       if (!res.ok) {
-        // Tampilkan pesan error detail dari Django (misal: "field asal required")
+        // Tampilkan pesan error detail
         const errorMsg = JSON.stringify(data); 
         throw new Error(data?.detail || errorMsg || `HTTP ${res.status}`);
       }
@@ -129,7 +118,7 @@ const TambahJadwal = () => {
         <div className="p-8">
           <h2 className="text-2xl font-semibold mb-6">Tambah Jadwal</h2>
           
-          {/* Tampilkan Error Global jika ada */}
+          {/* Tampilkan Error Global */}
           {err && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
                 {err}

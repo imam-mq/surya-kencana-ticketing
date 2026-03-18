@@ -24,13 +24,13 @@ const TambahPromo = () => {
         e.preventDefault();
 
         try {
-        // Mapping field sesuai dengan Model Django (Bahasa Indonesia)
+        // Mapping field 
         const payload = {
             nama: promo.judul,                     // title -> nama
-            deskripsi: promo.deskripsi,            // 🔥 TAMBAHKAN BARIS INI DI SINI
+            deskripsi: promo.deskripsi,            // promo deksripsi
             persen_diskon: Number(promo.diskon),   // discount_percent -> persen_diskon
             tanggal_mulai: promo.tanggal,          // start_date -> tanggal_mulai
-            tanggal_selesai: promo.tanggal,        // Karena di form cuma ada 1 input tanggal
+            tanggal_selesai: promo.tanggal,        // input 1 tanggal
             status: promo.status === "Aktif" ? "active" : "inactive"
         };
 
@@ -40,7 +40,7 @@ const TambahPromo = () => {
             headers: {
             "Content-Type": "application/json",
             },
-            body: JSON.stringify(payload), // Gunakan payload yang sudah di-mapping
+            body: JSON.stringify(payload), 
         });
 
         const result = await response.json();

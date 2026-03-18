@@ -38,7 +38,7 @@ const JadwalTiket = () => {
     try {
       const res = await fetch(`${API}/admin/jadwal/${id}/`, {
         method: "DELETE",
-        credentials: "include", // ⬅️ WAJIB (SESSION ADMIN)
+        credentials: "include", 
       });
 
       if (!res.ok) {
@@ -102,17 +102,17 @@ const JadwalTiket = () => {
                       hour: "2-digit", minute: "2-digit"
                     });
 
-                    // 🔥 3. (PINDAHAN) Hitung Kursi DULU sebelum cek status!
+                    // menghitung kursi
                     const capacity = it.kapasitas || 28;
                     const sold = it.terjual || 0;
                     const available = Math.max(0, capacity - sold); 
 
-                    // 🔥 4. Baru Cek Status berdasarkan kursi yang sudah dihitung
+                    // mengecek status berdasarkan kursi yang sudah dihitung
                     const statusLower = (it.status || "").toString().toLowerCase();
                     const isActive = statusLower === "active" || statusLower === "aktif";
                     const isFull = available === 0;
                     
-                    // Tentukan Warna & Teks
+                    // Warna & Teks
                     const displayStatus = isFull ? "SoldOut" : it.status;
                     const borderColor = isFull ? "#ef4444" : (isActive ? "#22c55e" : "#f59e0b");
                     const textColor = isFull ? "#b91c1c" : (isActive ? "#15803d" : "#b45309");
@@ -128,7 +128,7 @@ const JadwalTiket = () => {
                           Rp {Number(it.harga || 0).toLocaleString("id-ID")}
                         </td>
                         
-                        {/* TAMPILKAN ANGKA SISA KURSI (Merah kalau habis) */}
+                        {/* angka kursi, jika sudah habis maka bewarna merah */}
                         <td className={`p-3 text-center font-bold ${isFull ? 'text-red-600' : 'text-blue-700'}`}>
                           {available} / {capacity}
                         </td>
@@ -157,7 +157,7 @@ const JadwalTiket = () => {
                           </Box>
                         </td>
                         
-                        {/* Kolom Aksi (Biarkan sama seperti kodingan Abang) */}
+                        {/* Kolom Aksi */}
                         <td className="p-3 text-center">
                           <div className="flex justify-center gap-2">
                             <button onClick={() => navigate(`/admin/detail-jadwal/${it.id}`)} className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition" title="Lihat Detail">

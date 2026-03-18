@@ -1,5 +1,3 @@
-// src/admin/Dashboard.jsx
-
 import React, { useEffect, useState } from 'react';
 import Sidebar from "./layout/Sidebar";
 import AdminNavbar from "./layout/AdminNavbar";

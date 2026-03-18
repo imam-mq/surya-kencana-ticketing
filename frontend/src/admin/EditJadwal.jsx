@@ -9,7 +9,7 @@ const EditJadwal = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // 🔴 PERBAIKAN 1: Sesuaikan state dengan field di models.py (asal, tujuan, harga)
+  // state field models 
   const [form, setForm] = useState({
     asal: "",
     tujuan: "",
@@ -31,7 +31,7 @@ const EditJadwal = () => {
         setErr("");
         setLoading(true);
         
-        // Load Daftar Bus (PERBAIKAN: Tambah credentials 'include')
+        // Load Daftar Bus 
         try {
           const rb = await fetch(`${API}/admin/bus/`, { credentials: "include" });
           const jb = await rb.json();
@@ -40,12 +40,11 @@ const EditJadwal = () => {
           setBuses([]);
         }
         
-        // Load Detail Jadwal (PERBAIKAN: Tambah credentials 'include')
+        // Load Detail
         const rs = await fetch(`${API}/admin/jadwal/${id}/`, { credentials: "include" });
         if (!rs.ok) throw new Error(`HTTP ${rs.status}`);
         const s = await rs.json();
 
-        // 🔴 PERBAIKAN 2: Memisahkan DateTime dari Django menjadi Date & Time untuk input HTML
         const datetimeString = s.waktu_keberangkatan || "";
         const [datePart, timePart] = datetimeString.split("T");
 
@@ -73,17 +72,16 @@ const EditJadwal = () => {
     try {
       setSaving(true);
       
-      // 🔴 PERBAIKAN 3: Bungkus payload dengan nama yang sesuai dan gabungkan datetime
       const payload = {
         asal: form.asal,
         tujuan: form.tujuan,
-        waktu_keberangkatan: `${form.tanggal}T${form.waktu}:00`, // Gabungkan lagi saat dikirim
+        waktu_keberangkatan: `${form.tanggal}T${form.waktu}:00`,
         harga: Number(form.harga),
         status: form.status,
         bus: Number(form.bus),
       };
 
-      // 🔴 PERBAIKAN 4: Ganti PATCH jadi PUT & sertakan credentials
+      // credentioan PATCH & PUT
       const res = await fetch(`${API}/admin/jadwal/${id}/`, {
         method: "PUT",
         credentials: "include",
@@ -99,7 +97,7 @@ const EditJadwal = () => {
       }
       
       alert("Perubahan jadwal berhasil disimpan!");
-      navigate("/admin/jadwaltiket"); // Pastikan rute ini benar sesuai App.js Abang
+      navigate("/admin/jadwaltiket");
     } catch (e) {
       alert(`Gagal menyimpan: ${e.message}`);
     } finally {
@@ -127,7 +125,7 @@ const EditJadwal = () => {
                 <label className="block font-medium mb-1">Kota Asal</label>
                 <input
                   type="text"
-                  name="asal" // Sudah disesuaikan
+                  name="asal"
                   value={form.asal}
                   onChange={onChange}
                   required
@@ -138,7 +136,7 @@ const EditJadwal = () => {
                 <label className="block font-medium mb-1">Kota Tujuan</label>
                 <input
                   type="text"
-                  name="tujuan" // Sudah disesuaikan
+                  name="tujuan"
                   value={form.tujuan}
                   onChange={onChange}
                   required
@@ -150,7 +148,7 @@ const EditJadwal = () => {
                 <label className="block font-medium mb-1">Tanggal Keberangkatan</label>
                 <input
                   type="date"
-                  name="tanggal" // Sudah disesuaikan
+                  name="tanggal" 
                   value={form.tanggal}
                   onChange={onChange}
                   required
@@ -161,7 +159,7 @@ const EditJadwal = () => {
                 <label className="block font-medium mb-1">Waktu Keberangkatan</label>
                 <input
                   type="time"
-                  name="waktu" // Sudah disesuaikan
+                  name="waktu"
                   value={form.waktu}
                   onChange={onChange}
                   required
@@ -173,7 +171,7 @@ const EditJadwal = () => {
                 <label className="block font-medium mb-1">Harga Tiket (Rp)</label>
                 <input
                   type="number"
-                  name="harga" // Sudah disesuaikan
+                  name="harga" 
                   value={form.harga}
                   onChange={onChange}
                   required
@@ -192,7 +190,6 @@ const EditJadwal = () => {
                   className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">-- Pilih Bus --</option>
-                  {/* 🔴 PERBAIKAN 5: Sesuai dengan field di models.py (nama & tipe) */}
                   {buses.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.nama} {b.tipe ? `[${b.tipe}]` : ""}

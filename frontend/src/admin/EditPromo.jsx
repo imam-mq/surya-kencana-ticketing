@@ -5,7 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 const EditPromo = () => {
     const navigate = useNavigate();
-    const { id } = useParams();  // Ambil ID dari URL
+    const { id } = useParams();  // ID dari URL
 
     const [promo, setPromo] = useState({
         judul: "",
@@ -17,7 +17,7 @@ const EditPromo = () => {
     });
 
     useEffect(() => {
-        // Ambil detail promo berdasarkan ID dari URL
+        // detail promo berdasarkan id promo
         fetch(`http://127.0.0.1:8000/api/accounts/admin/promo/${id}/`)
             .then((res) => res.json())
             .then((data) => {
@@ -33,7 +33,7 @@ const EditPromo = () => {
             .catch((err) => {
                 console.error("Error fetching promo details:", err);
             });
-    }, [id]);  // Efek samping untuk memuat data promo ketika ID berubah
+    }, [id]); 
 
     // Fungsi untuk menangani perubahan form
     const handleChange = (e) => {
@@ -47,7 +47,7 @@ const EditPromo = () => {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // Kirim data promo yang sudah diedit ke backend menggunakan PUT
+        // fetch put promo
         fetch(`http://127.0.0.1:8000/api/accounts/admin/promo/${id}/`, {
             method: "PUT",
             headers: {

@@ -8,7 +8,7 @@ const DetailPromo = () => {
   const navigate = useNavigate();
 
   const [promoDetail, setPromoDetail] = useState(null);
-  const [purchases, setPurchases] = useState([]); // nanti isi dari API kalau ada
+  const [purchases, setPurchases] = useState([]);
 
   useEffect(() => {
     // fetch detail promo
@@ -21,10 +21,9 @@ const DetailPromo = () => {
         console.error("Error fetching promo details:", err);
       });
 
-    setPurchases([]); // kosongkan (atau gunakan sample data untuk testing)
+    setPurchases([]);
   }, [id]);
 
-  // helper format tanggal (simple)
   const formatDate = (iso) => {
     if (!iso) return "-";
     try {
@@ -155,7 +154,7 @@ const DetailPromo = () => {
                       </tr>
                     ))
                   ) : (
-                    // tampilkan beberapa baris kosong sebagai placeholder UI
+                    // placeholder UI
                     Array.from({ length: PLACEHOLDER_ROWS }).map((_, idx) => (
                       <tr key={idx} className="odd:bg-white even:bg-gray-50">
                         <td className="px-4 py-3 border text-gray-400">{idx + 1}</td>
@@ -171,7 +170,7 @@ const DetailPromo = () => {
               </table>
             </div>
 
-            {/* footer kecil: hint integrasi */}
+            
             <div className="mt-4 text-sm text-gray-500">
               Info: Untuk mengisi tabel ini secara realtime, tambahkan endpoint backend yang mengembalikan daftar penggunaan promo (mis. <code>/api/accounts/admin/promo/{id}/usages/</code>) lalu fetch di useEffect dan set ke <code>setPurchases</code>.
             </div>

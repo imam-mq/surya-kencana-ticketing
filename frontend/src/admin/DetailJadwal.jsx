@@ -81,7 +81,7 @@ const DetailJadwal = () => {
           ) : (
             <div className="space-y-6">
               
-              {/* CARD 1: INFORMASI KEBERANGKATAN */}
+              {/* CARD INFORMASI KEBERANGKATAN */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <div className="flex justify-between items-center border-b pb-4 mb-5">
                   <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800">
@@ -145,7 +145,7 @@ const DetailJadwal = () => {
                 </div>
               </div>
 
-              {/* CARD 2: DAFTAR PENUMPANG */}
+              {/* CARD  DAFTAR PENUMPANG */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <div className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 mb-5 gap-4">
                   <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800">
@@ -203,7 +203,7 @@ const DetailJadwal = () => {
                               </span>
                             </td>
                             
-                            {/* Dibeli Oleh (Agent/User) */}
+                            {/* Dibeli Oleh Agent/User */}
                             <td className="py-3 px-4">
                               <span className={`flex items-center gap-1 font-semibold ${p.dibeli_oleh === 'Agent' ? 'text-blue-600' : 'text-purple-600'}`}>
                                 <FaCheckCircle /> {p.dibeli_oleh}

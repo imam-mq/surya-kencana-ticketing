@@ -8,32 +8,31 @@ const ManajemenUser = () => {
 
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/accounts/users/", {
-      // Tambahkan credentials jika API membutuhkan login Admin
+      
       credentials: "include", 
     })
       .then((res) => res.json())
       .then((data) => {
-        // 🔥 PERBAIKAN: Pengecekan ketat apakah data yang diterima adalah Array
+        // cek data yang diterima yaitu arry
         if (Array.isArray(data)) {
           setUsers(data);
         } else if (data && Array.isArray(data.results)) {
-          // Jika API menggunakan Pagination Django (DRF)
           setUsers(data.results);
         } else {
           console.error("Data users bukan array:", data);
-          setUsers([]); // Set array kosong agar tidak error .filter
+          setUsers([]);
         }
       })
       .catch((err) => {
         console.error("Error fetching users:", err);
-        setUsers([]); // Set array kosong jika error network
+        setUsers([]);
       });
   }, []);
 
-  // 🔥 PERBAIKAN: Gunakan optional chaining (?.) untuk menghindari error jika null
+  
   const filteredUsers = users.filter((u) =>
     (u?.username || "").toLowerCase().includes(search.toLowerCase()) ||
-    (u?.email || "").toLowerCase().includes(search.toLowerCase()) // Bonus: Bisa cari pakai email juga
+    (u?.email || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
