@@ -41,6 +41,8 @@ import ProfilUser from "./user/Profil";
 import DashboardUser from "./user/LayoutUser/DashboardUser";
 import Tiket from "./user/Tiket";
 import PesananSaya from "./user/PesananSaya";
+import PaymentSuccess from './user/checkout/PaymentSuccess';
+
 
 // Agent Pages
 import DashboardAgent from "./agent/DashboardAgent";
@@ -99,6 +101,7 @@ function App() {
         <Route path="profil" element={<ProfilUser />} />
         <Route path="tiket" element={<Tiket />} />
         <Route path="pesanansaya" element={<PesananSaya />} />
+        <Route path="/user/payment-success/:orderId" element={<PaymentSuccess />} />
       </Route>
     </Routes>
   );

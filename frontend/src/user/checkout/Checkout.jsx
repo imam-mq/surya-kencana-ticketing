@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { FaArrowLeft, FaTicketAlt, FaUser } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 const Checkout = ({ data, onBack }) => {
   const { trip, seats } = data;
   const hargaPerTiket = Number(trip.harga || 0);
   const totalHargaAwal = seats.length * hargaPerTiket;
+  const navigate = useNavigate();
+  
 
   const [penumpang, setPenumpang] = useState(
     seats.map(seat => ({ kursi: seat, nama: "", nik: "", telepon: "", gender: "" }))
@@ -81,23 +84,39 @@ const Checkout = ({ data, onBack }) => {
       if (res.ok) {
         // AMBIL TOKEN DARI BACKEND
         const snapToken = responseData.snap_token;
+        const orderId = responseData.order_id;
 
         // MIDTRANS
         window.snap.pay(snapToken, {
           onSuccess: function(result) {
-            alert("Pembayaran Berhasil!");
-            console.log(result);
+            navigate(`/user/payment-success/${orderId}`);
           },
           onPending: function(result) {
-            alert("Menunggu pembayaran Anda...");
-            console.log(result);
+            alert("Pesanan disimpan. Segera melakukan pembayaran");
+            navigate("/user/pesanan-saya");
           },
           onError: function(result) {
-            alert("Pembayaran Gagal!");
-            console.log(result);
+            alert("pesanan gagal");
+            setLoadingProses(false);
           },
-          onClose: function() {
-            alert('Anda menutup layar pembayaran sebelum selesai.');
+          onClose: async function() {
+            setLoadingProses(false);
+            //api cancel ke backend cance_order
+            try {
+              await fetch(`http://127.0.0.1:8000/api/accounts/order/${orderId}/cancel/`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${localStorage.getItem('token')}`
+                },
+                credentials: "include"
+              });
+              alert("Anda menutup halaman pembayaran. Pesanan dibatalkan dan kursi telah dilepas kembali.");
+
+              navigate("/user/tiket");
+            } catch (error) {
+              console.error("Gagal membatalkan pesanan", error);
+            }
           }
         });
 
