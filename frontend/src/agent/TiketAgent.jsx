@@ -22,17 +22,38 @@ const TripCard = ({ trip, onToggleOpen }) => {
   const busName = trip.bus_name || "-";
   const busCode = trip.bus_type || "";
 
-  // 🔥 PERUBAHAN DI SINI: Baca kapasitas dan terjual langsung dari Backend
+  // PERUBAHAN DI SINI: Baca kapasitas dan terjual langsung dari Backend
   const capacity = trip.kapasitas || 28; 
-  const soldSeats = trip.terjual || 0; 
-  const availableSeats = Math.max(0, capacity - soldSeats);
+  
+  // mengambil sisa kursi dari backend
+  const availableSeats = trip.sisa_kursi !== undefined ? trip.sisa_kursi : Math.max(0, capacity - (trip.terjual || 0));
+  const soldSeats = capacity - availableSeats;
   const occupancyRate = Math.min(100, Math.round((soldSeats / capacity) * 100));
 
+  // logika status
+  const isExpired = dateObj < new Date();
+  const isFull = trip.is_full || availableSeats <= 0 || trip.status === "sold_out";
+  const isDisabled = isExpired || isFull;
+
+  let statusText = "Lihat Tempat Duduk";
+  let buttonClass = "bg-blue-600 hover:bg-blue-700 text-white";
+  let cardClass = "border-gray-200 hover:shadow-md cursor-pointer";
+
+  if (isExpired) {
+    statusText = "Sudah Berangkat";
+    buttonClass = "bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300";
+    cardClass = "border-gray-200 opacity-60 grayscale cursor-not-allowed";
+  } else if (isFull) {
+    statusText = "Tiket Habis";
+    buttonClass = "bg-red-50 text-red-500 cursor-not-allowed border border-red-200";
+    cardClass = "border-red-200 opacity-90 cursor-not-allowed";
+  }
+
   return (
-    <div
-      className="bg-white rounded-lg shadow-sm hover:shadow-md border border-gray-200 transition-all duration-300 overflow-hidden cursor-pointer"
-      onClick={() => onToggleOpen(trip.id)}
-    >
+      <div
+        className={`bg-white rounded-lg shadow-sm border transition-all duration-300 overflow-hidden ${cardClass}`}
+        onClick={() => !isDisabled && onToggleOpen(trip.id)}
+      >
       <div className="flex flex-col md:flex-row md:items-center justify-between p-5 gap-4">
         <div className="flex items-center gap-3 min-w-[180px]">
           <img src={LogoSK1} alt="logo" className="w-12 h-12 object-contain" />
@@ -66,7 +87,7 @@ const TripCard = ({ trip, onToggleOpen }) => {
         <div className="flex flex-col items-center gap-2 min-w-[100px]">
           <div className="text-center">
             {/* kursi tersedia akan otomatis berkurang jika ada yang booking */}
-            <p className="text-sm font-bold text-gray-900">{availableSeats}</p>
+            <p className={`text-sm font-bold ${isFull ? 'text-red-600' : 'text-gray-900'}`}>{availableSeats}</p>
             <p className="text-xs text-gray-500">Kursi Tersedia</p>
           </div>
 
@@ -81,10 +102,11 @@ const TripCard = ({ trip, onToggleOpen }) => {
           </div>
 
           <button
+            disabled={isDisabled}
             onClick={(e) => { e.stopPropagation(); onToggleOpen(trip.id); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
+            className={`w-full font-semibold py-2 px-3 rounded-lg text-xs transition ${buttonClass}`}
           >
-            Lihat Tempat Duduk
+            {statusText}
           </button>
         </div>
       </div>

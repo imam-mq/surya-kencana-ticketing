@@ -5,6 +5,7 @@ import SeatGridInline28 from "./kursi/SeatGridInline28";
 import SeatGridSleeper from "./kursi/SeatGridSleeper";
 import Checkout from "./checkout/Checkout";
 
+
 const API = "http://127.0.0.1:8000/api/accounts";
 
 const TripCard = ({ trip, onToggleOpen }) => {
@@ -22,17 +23,35 @@ const TripCard = ({ trip, onToggleOpen }) => {
   const dateStr = dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   const timeStr = dateObj.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 
-  // mengecek apakah tiket penuh
-  const isFull = availableSeats === 0 || trip.status === "sold_out";
+  // cek kondisi
+  const isExpired = dateObj < new Date();
+  const isFull = availableSeats <= 0 || trip.status === "sold_out";
+  const isDisabled = isExpired || isFull;
+
+  let statusText = "Pilih Kursi";
+  let buttonClass = "bg-blue-600 hover:bg-blue-700 text-white";
+  let cardClass = "border-gray-200 hover:shadow-md cursor-pointer";
+
+  if (isExpired) {
+    // kondisi jika bus sudah jalan dan melewati waktu keberangkatan
+    statusText = "Sudah Berangkat";
+    buttonClass = "bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300";
+    cardClass = "border-gray-200 opacity-60 grayscale cursor-not-allowed";
+  } else if (isFull) {
+    // kondisi jika bus belum jalan tapi sudah penuh
+    statusText = "Tiket Habis";
+    buttonClass = "bg-red-50 text-red-500 cursor-not-allowed border border-red-200";
+    cardClass = "border-red-200 opacity-90 cursor-not-allowed";
+  }
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm border ${isFull ? 'border-red-200 opacity-90' : 'border-gray-200 hover:shadow-md'} transition-all duration-300 overflow-hidden ${isFull ? 'cursor-not-allowed' : 'cursor-pointer'}`} 
-      onClick={() => !isFull && onToggleOpen(trip.id)}
+      className={`bg-white rounded-lg shadow-sm border transition-all duration-300 overflow-hidden ${cardClass}`} 
+      onClick={() => !isDisabled && onToggleOpen(trip.id)}
     >
       <div className="flex flex-col md:flex-row md:items-center justify-between p-5 gap-4">
         
-        {/* Bagian Kiri - Info Bus */}
+        {/* Info Bus */}
         <div className="flex items-center gap-3 min-w-[180px] md:mt-[-10px]">
           <img src={LogoSK1} alt="logo" className="w-12 h-12 object-contain" />
           <div>
@@ -43,7 +62,7 @@ const TripCard = ({ trip, onToggleOpen }) => {
           </div>
         </div>
 
-        {/* Tengah - Detail Perjalanan */}
+        {/* Detail Perjalanan */}
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase">Keberangkatan</h4>
@@ -65,7 +84,7 @@ const TripCard = ({ trip, onToggleOpen }) => {
           </div>
         </div>
 
-        {/* Kanan - Kursi & Tombol */}
+        {/*Kursi & Tombol */}
         <div className="flex flex-col items-center gap-2 min-w-[120px]">
           <div className="text-center">
             <p className={`text-sm font-bold ${isFull ? 'text-red-600' : 'text-gray-900'}`}>{availableSeats}</p>
@@ -88,18 +107,14 @@ const TripCard = ({ trip, onToggleOpen }) => {
           </div>
 
           <button
-            disabled={isFull}
+            disabled={isDisabled}
             onClick={(e) => {
               e.stopPropagation();
               onToggleOpen(trip.id);
             }}
-            className={`w-full font-semibold py-2 px-3 rounded-lg text-xs transition ${
-              isFull 
-                ? 'bg-red-50 text-red-500 cursor-not-allowed border border-red-200' 
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
+            className={`w-full font-semibold py-2 px-3 rounded-lg text-xs transition ${buttonClass}`}
           >
-            {isFull ? "Tiket Habis" : "Pilih Kursi"}
+            {statusText}
           </button>
         </div>
 

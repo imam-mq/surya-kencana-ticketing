@@ -110,13 +110,32 @@ const JadwalTiket = () => {
                     // mengecek status berdasarkan kursi yang sudah dihitung
                     const statusLower = (it.status || "").toString().toLowerCase();
                     const isActive = statusLower === "active" || statusLower === "aktif";
+                    const isExpired = dateObj < new Date();
                     const isFull = available === 0;
                     
                     // Warna & Teks
-                    const displayStatus = isFull ? "SoldOut" : it.status;
-                    const borderColor = isFull ? "#ef4444" : (isActive ? "#22c55e" : "#f59e0b");
-                    const textColor = isFull ? "#b91c1c" : (isActive ? "#15803d" : "#b45309");
-                    const bgColor = isFull ? "#fee2e2" : (isActive ? "#dcfce7" : "#fef3c7");
+                    // Warna & Teks Dinamis
+                    let displayStatus = it.status;
+                    let borderColor = "#f59e0b";
+                    let textColor = "#b45309";
+                    let bgColor = "#fef3c7";
+
+                    if (isExpired) {
+                        displayStatus = "Berangkat";
+                        borderColor = "#9ca3af"; // abu-abu
+                        textColor = "#4b5563";
+                        bgColor = "#f3f4f6";
+                    } else if (isFull) {
+                        displayStatus = "Sold Out";
+                        borderColor = "#ef4444"; // merah
+                        textColor = "#b91c1c";
+                        bgColor = "#fee2e2";
+                    } else if (isActive) {
+                        displayStatus = "Active";
+                        borderColor = "#22c55e"; // hijau
+                        textColor = "#15803d";
+                        bgColor = "#dcfce7";
+                    }
 
                     return (
                       <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50">
