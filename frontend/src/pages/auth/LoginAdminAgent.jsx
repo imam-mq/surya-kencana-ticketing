@@ -3,6 +3,10 @@ import { FaBus, FaSun } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import SubmitButton from "../../components/ui/SubmitButton";
 
+// --- 1. IMPORT API & CONTEXT ---
+import { loginAdminApi, loginAgentApi } from "../../api/authApi";
+import { useAuth } from "../../context/AuthContext";
+
 export default function LoginAdminAgent() {
   const primaryColor = "#314D9C";
   const cardColor = "#D4C8A6";
@@ -11,45 +15,42 @@ export default function LoginAdminAgent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
+  const { login } = useAuth(); // <--- Ambil fungsi login dari Context
 
+  // --- 2. FUNGSI SUBMIT MENGGUNAKAN API ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const loginUrl =
-      role === "admin"
-        ? "http://127.0.0.1:8000/api/accounts/login-admin-api/"
-        : "http://127.0.0.1:8000/api/accounts/login-agent/";
-
     try {
-      const response = await fetch(loginUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || data.message || "Login gagal, cek kembali akun Anda");
-      }
+      // Panggil API sesuai dengan role yang dipilih
+      const data = role === "admin" 
+        ? await loginAdminApi({ email, password })
+        : await loginAgentApi({ email, password });
 
       const serverRole = data.peran;
 
+      // Validasi tambahan
       if (role !== serverRole) {
         alert(`Akun ini terdaftar sebagai "${serverRole}", Anda mencoba login sebagai "${role}"`);
         return;
       }
 
+      // Simpan ke Context
+      login(data);
+
+      // Pindah halaman
       if (serverRole === "agent") {
         navigate("/agent/dashboard");
       } else if (serverRole === "admin") {
         navigate("/admin/dashboard");
       }
+
     } catch (err) {
-      alert(err.message);
+      // error dari backend
+      alert(err.response?.data?.message || err.response?.data?.error || "Login gagal, cek kembali akun Anda");
     } finally {
       setIsLoading(false);
     }

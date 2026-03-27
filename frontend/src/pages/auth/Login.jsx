@@ -3,6 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { FaBus, FaSun } from "react-icons/fa";
 import SubmitButton from "../../components/ui/SubmitButton";
 
+// --- 1. IMPORT API & CONTEXT ---
+import { loginUserApi, getCsrfToken } from "../../api/authApi";
+import { useAuth } from "../../context/AuthContext";
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -10,44 +14,36 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { login } = useAuth(); // <--- Mengambil fungsi login dari Context
+  
   const primaryColor = "#314D9C";
   const cardColor = "#D4C8A6";
 
+  // --- PANGGIL FUNGSI CSRF DARI API ---
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/accounts/get-csrf/", {
-      credentials: "include",
-    });
+    getCsrfToken().catch((err) => console.error("Gagal get CSRF:", err));
   }, []);
 
+  // --- FUNGSI SUBMIT MENGGUNAKAN API ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/accounts/login-user/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
-      });
+      const data = await loginUserApi({ email, password });
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (data.success) {
         alert("Login berhasil!");
-        const userData = {
-          id: data.id,
-          email: data.email,
-          peran: data.peran,
-        };
-        localStorage.setItem("user", JSON.stringify(userData));
-        navigate("/user/profil");
+        
+        login(data); // Simpan ke Context
+        navigate("/user/profil"); // Pindah halaman
       } else {
         setError(data.message || "Email atau Password salah");
       }
     } catch (error) {
-      setError("Terjadi kesalahan koneksi ke server");
+      // Tangkap error dari backend (401)
+      setError(error.response?.data?.message || "Terjadi kesalahan koneksi ke server");
     } finally {
       setIsLoading(false);
     }

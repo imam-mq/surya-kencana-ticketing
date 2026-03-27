@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 // --- 1. IMPORT FUNGSI API ---
 import { getUserProfile, updateUserProfile } from "../../api/userApi";
+import { useAuth } from "../../context/AuthContext";
 
 const Profil = () => {
   const [userData, setUserData] = useState({
@@ -20,8 +21,11 @@ const Profil = () => {
 
   const primaryColor = "#3B5998";
 
-  // Ambil user_id dari localStorage (saat login)
-  const userId = JSON.parse(localStorage.getItem("user"))?.id;
+  // mengambil data dari context
+  const { user } = useAuth();
+
+  const userId = user?.id;
+
 
   // --- 2. UPDATE FUNGSI LOAD DATA ---
   useEffect(() => {
