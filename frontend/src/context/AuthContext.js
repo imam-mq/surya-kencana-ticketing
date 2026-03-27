@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
     };
     return (
         <AuthContext.Provider value={{ user, login, logout, loading }}>
-            {!loading && children} {/* Jangan render halaman sebelum tau user login/tidak */}
+            {!loading && children}
         </AuthContext.Provider>
     );
 };

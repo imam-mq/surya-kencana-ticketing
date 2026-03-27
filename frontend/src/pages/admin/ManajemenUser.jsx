@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "./layout/Sidebar";
 import AdminNavbar from "./layout/AdminNavbar";
-import { getAdminUsers } from "../../api/adminApi"; // Import API Luar
+import { getAdminUsers, toggleUserStatus } from "../../api/adminApi"; // Import API Luar
 
 const ManajemenUser = () => {
   const [users, setUsers] = useState([]);
@@ -24,6 +24,18 @@ const ManajemenUser = () => {
         setUsers([]);
       });
   }, []);
+
+
+  const handleToggle = async (id) => {
+    try {
+      await toggleUserStatus(id);
+      // Refresh data setelah berhasil update
+      const updatedData = await getAdminUsers();
+      setUsers(updatedData.results || updatedData);
+    } catch (err) {
+      alert("Gagal mengubah status user");
+    }
+  };
 
   const filteredUsers = users.filter((u) =>
     (u?.username || "").toLowerCase().includes(search.toLowerCase()) ||

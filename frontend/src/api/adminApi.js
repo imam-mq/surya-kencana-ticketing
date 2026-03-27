@@ -1,4 +1,3 @@
-// src/api/adminApi.js
 import axios from 'axios';
 import { API_BASE_URL } from './apiConfig';
 
@@ -9,25 +8,25 @@ const adminClient = axios.create({
 
 // --- DASHBOARD & USERS ---
 export const getAdminUsers = async () => {
-  const res = await adminClient.get('/users/');
+  const res = await adminClient.get('/admin/users/');
   return res.data;
 };
 
 // --- AGENTS ---
 export const getAdminAgents = async () => {
-  const res = await adminClient.get('/agents/');
+  const res = await adminClient.get('/admin/agents/');
   return res.data;
 };
 export const createAdminAgent = async (payload) => {
-  const res = await adminClient.post('/agents/add/', payload);
+  const res = await adminClient.post('/admin/agents/', payload);
   return res.data;
 };
 export const updateAdminAgent = async (id, payload) => {
-  const res = await adminClient.put(`/agents/${id}/update/`, payload);
+  const res = await adminClient.put(`/admin/agents/${id}/`, payload);
   return res.data;
 };
 export const deleteAdminAgent = async (id) => {
-  const res = await adminClient.delete(`/agents/${id}/delete/`);
+  const res = await adminClient.delete(`/admin/agents/${id}/`);
   return res.data;
 };
 
@@ -57,7 +56,13 @@ export const deleteAdminJadwal = async (id) => {
   return res.data;
 };
 export const getAdminJadwalPenumpang = async (id) => {
-  const res = await adminClient.get(`/jadwal/${id}/detail-penumpang/`);
+  const res = await adminClient.get(`/admin/jadwal/${id}/detail-penumpang/`);
+  return res.data;
+};
+
+// status user
+export const toggleUserStatus = async (id) => {
+  const res = await adminClient.patch(`/admin/users/${id}/toggle/`);
   return res.data;
 };
 

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaBus, FaSun } from "react-icons/fa";
 import SubmitButton from "../../components/ui/SubmitButton";
+import { registerUserApi } from "../../api/authApi";
 
 export default function Register() {
   const primaryColor = "#314D9C";
@@ -27,7 +28,7 @@ export default function Register() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (form.password !== form.konfirmasiPassword) {
@@ -36,23 +37,24 @@ export default function Register() {
     }
 
     setIsLoading(true);
+    setError(""); // Reset error setiap kali mencoba submit
 
-    fetch("http://127.0.0.1:8000/api/accounts/register/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setError(data.error);
-        } else {
-          alert("Registrasi berhasil!");
-          navigate("/login");
-        }
-      })
-      .catch(() => setError("Terjadi kesalahan server."))
-      .finally(() => setIsLoading(false));
+    try {
+      // fungsi diimport authApi
+      const data = await registerUserApi(form);
+
+      if (data.error) {
+        setError(data.error);
+      } else {
+        alert("Pendaftaran Berhasil! Kami telah mengirimkan link aktivasi. Silakan buka aplikasi email Anda untuk mengaktifkan akun sebelum login.");
+        navigate("/login");
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || "Terjadi kesalahan server.";
+      setError(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const inputBase = {
