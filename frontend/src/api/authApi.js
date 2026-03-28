@@ -31,7 +31,6 @@ export const registerUserApi = async (payload) => {
   return res.data;
 };
 
-// --- TAMBAHKAN EMAIL ---
 export const verifyEmailApi = async (token) => {
   const res = await authClient.post('/verify-email/', { token });
   return res.data;

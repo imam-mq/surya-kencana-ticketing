@@ -5,8 +5,11 @@ import ActionBar      from "./tiketterbitcomponent/ActionBar";
 import TabelTiket     from "./tiketterbitcomponent/TabelTiket";
 import ToastNotifikasi from "./tiketterbitcomponent/ToastNotifikasi";
 
+// --- IMPORT SERVICE ---
+import { downloadTicketPDF } from '../../services/ticketService';
+
 // --- IMPORT API ---
-import { getIssuedTickets, downloadTicketPDF } from "../../api/agentApi";
+import { getIssuedTickets } from "../../api/agentApi"; 
 
 const TiketTerbit = () => {
   const [tickets, setTickets]         = useState([]);
@@ -17,11 +20,13 @@ const TiketTerbit = () => {
   const [showToast, setShowToast]     = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
+  // Ambil data tiket saat halaman pertama kali dibuka
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const data = await getIssuedTickets(); // Menggunakan API Luar
+        const data = await getIssuedTickets(); 
         
+        // maping data
         const mappedTickets = data.map((item, index) => ({
           no: index + 1,
           id: item.id,
@@ -38,69 +43,68 @@ const TiketTerbit = () => {
         setTickets(mappedTickets);
       } catch (error) {
         if (error.response?.status === 401) {
-          alert("Session habis, silakan login ulang");
+          alert("Sesi Abang sudah habis, silakan login ulang ya.");
         } else {
-          console.error("Gagal mengambil tiket:", error);
+          console.error("Waduh, gagal ambil data tiket:", error);
         }
       }
     };
     fetchTickets();
   }, []);
 
-  // Filter
+  // Fitur Pencarian (Cari berdasarkan nama, rute, atau bus)
   const filtered = tickets.filter((ticket) =>
     `${ticket.penumpang} ${ticket.tipeRis} ${ticket.asal} ${ticket.tujuan}`
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
   );
 
-  // Pagination
   const indexOfLastItem  = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentTickets   = filtered.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages       = Math.ceil(filtered.length / itemsPerPage);
 
-  // Handlers
-  const handleExportPDF = () => alert("Export PDF functionality");
-  const handlePrint     = () => alert("Print functionality");
-
+  // Fungsi buat download tiket pas tombol di tabel diklik
   const handleDownload = async (ticketId) => {
+    if (!ticketId) return;
+
     try {
-      setDownloadingId(ticketId);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const blob = await downloadTicketPDF(ticketId); // Menggunakan API Luar (langsung retur Blob)
+      setDownloadingId(ticketId); // Nyalain loading di tombol
       
-      const link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob);
-      link.download = `tiket_agent_${ticketId}.pdf`; // Nama file diubah sedikit agar rapi
-      link.click();
+      // Panggil "jurus" download kita dari service
+      await downloadTicketPDF(ticketId); 
 
-      setToastMessage("File tiket berhasil diunduh ke perangkat anda");
+      // Kasih notif kalau berhasil
+      setToastMessage("Mantap! Tiket sudah berhasil diunduh.");
       setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
+      setTimeout(() => setShowToast(false), 3000);
+      
     } catch (err) {
-      alert("Gagal download tiket. Pastikan server backend berjalan normal.");
+      console.error("Gagal download:", err);
+      alert("Gagal cetak PDF. Coba cek koneksi atau server.");
     } finally {
-      setDownloadingId(null);
+      setDownloadingId(null); // Matiin loading di tombol
     }
   };
 
+  const handleExportPDF = () => alert("Fitur Export PDF List sedang disiapkan!");
+  const handlePrint     = () => window.print();
+
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar_Agent />
 
       <div className="flex-1 flex flex-col">
         <Agent_Navbar />
 
         <main className="flex-1 p-8">
-          {/* Header */}
+          {/* Header Judul */}
           <div className="mb-8">
-            <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Tiket Terbit</h1>
-            <p className="text-gray-600 text-lg">Daftar Tiket Yang Telah Diterbitkan</p>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Tiket Terbit</h1>
+            <p className="text-gray-500 text-lg">Kelola semua tiket yang sudah dicetak oleh Agent.</p>
           </div>
 
-          {/* Action Bar */}
+          {/* Kolom cari dan tombol aksi */}
           <ActionBar
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -108,7 +112,7 @@ const TiketTerbit = () => {
             handlePrint={handlePrint}
           />
 
-          {/* Tabel */}
+          {/* Tabel Utama */}
           <TabelTiket
             currentTickets={currentTickets}
             filtered={filtered}
@@ -123,7 +127,7 @@ const TiketTerbit = () => {
             handleDownload={handleDownload}
           />
 
-          {/* Toast */}
+          {/* Notifikasi Pop-up */}
           <ToastNotifikasi
             showToast={showToast}
             toastMessage={toastMessage}

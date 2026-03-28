@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { API_BASE_URL } from './apiConfig';
 
-// Konfigurasi Axios untuk Agent
+// Konfigurasi Axios Agent
 const agentClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -67,10 +67,3 @@ export const getIssuedTickets = async () => {
   return res.data;
 };
 
-// Download Tiket PDF (Khusus file Blob)
-export const downloadTicketPDF = async (ticketId) => {
-  const res = await agentClient.get(`/agent/download-tiket-pdf/?ticket_id=${ticketId}`, {
-    responseType: 'blob' // Penting untuk file PDF
-  });
-  return res.data;
-};

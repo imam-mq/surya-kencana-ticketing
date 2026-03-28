@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/layout/ProtectedRoute';
 import "./index.css";
 
 // ---  AUTH PAGES ---
@@ -56,7 +57,6 @@ function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Landing Page Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/profil" element={<ProfilPerusahaan />} />
         <Route path="/layanan" element={<Layanan />} />
@@ -69,41 +69,45 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/loginadminagent" element={<LoginAdminAgent />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin/dashboard" element={<Dashboard />} />
-        <Route path="/admin/manajemenuser" element={<ManajemenUser />} />
-        <Route path="/admin/manajemenagent" element={<ManajemenAgent />} />
-        <Route path="/admin/jadwaltiket" element={<JadwalTiket />} />
-        <Route path="/admin/tambah-jadwal" element={<TambahJadwal />} />
-        <Route path="/admin/edit-jadwal/:id" element={<EditJadwal />} />
-        <Route path="/admin/detail-jadwal/:id" element={<DetailJadwal />} />
-        <Route path="/admin/manajemenpromo" element={<ManajemenPromo />} />
-        <Route path="/admin/TambahPromo" element={<TambahPromo />} />
-        <Route path="/admin/DetailPromo/:id" element={<DetailPromo />} />
-        <Route path="/admin/EditPromo/:id" element={<EditPromo />} />
-        <Route path="/admin/laporanmonitoring" element={<LaporanMonitoring />} />
-        <Route path="/admin/Laporan/transaksi" element={<TotalTransaksi />} />
-        <Route path="/admin/Laporan/tiketterjual" element={<TiketTerjual />} />
-        <Route path="/admin/Laporan/agentransaksi" element={<AgentTransaksi />} />
-        <Route path="/admin/Laporan/Dtransaksiagent/:id" element={<Dtransaksiagent />} />
-        <Route path="/admin/Laporan/btransfer" element={<Btransfer />} />
-
-        {/* Agent Routes */}
-        <Route path="/agent/dashboard" element={<DashboardAgent />} />
-        <Route path="/agent/tiketagent" element={<TiketAgent />} />
-        <Route path="/agent/tiketterbit" element={<TiketTerbit />} />
-        <Route path="/agent/komisilaporan" element={<KomisiLaporan />} />
-        <Route path="/agent/komisiagent" element={<KomisiAgent />} />
-        <Route path="/agent/komisi/detailpriodeagent/:id" element={<DetailPeriodeAgent />} />
-
-        {/* User Routes (Nested) */}
-        <Route path="/user" element={<DashboardUser />}>
-          <Route index element={<ProfilUser />} />
-          <Route path="profil" element={<ProfilUser />} />
-          <Route path="tiket" element={<Tiket />} />
-          <Route path="pesanansaya" element={<PesananSaya />} />
-          <Route path="payment-success/:orderId" element={<PaymentSuccess />} />
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route path="/admin/dashboard" element={<Dashboard />} />
+          <Route path="/admin/manajemenuser" element={<ManajemenUser />} />
+          <Route path="/admin/manajemenagent" element={<ManajemenAgent />} />
+          <Route path="/admin/jadwaltiket" element={<JadwalTiket />} />
+          <Route path="/admin/tambah-jadwal" element={<TambahJadwal />} />
+          <Route path="/admin/edit-jadwal/:id" element={<EditJadwal />} />
+          <Route path="/admin/detail-jadwal/:id" element={<DetailJadwal />} />
+          <Route path="/admin/manajemenpromo" element={<ManajemenPromo />} />
+          <Route path="/admin/TambahPromo" element={<TambahPromo />} />
+          <Route path="/admin/DetailPromo/:id" element={<DetailPromo />} />
+          <Route path="/admin/EditPromo/:id" element={<EditPromo />} />
+          <Route path="/admin/laporanmonitoring" element={<LaporanMonitoring />} />
+          <Route path="/admin/Laporan/transaksi" element={<TotalTransaksi />} />
+          <Route path="/admin/Laporan/tiketterjual" element={<TiketTerjual />} />
+          <Route path="/admin/Laporan/agentransaksi" element={<AgentTransaksi />} />
+          <Route path="/admin/Laporan/Dtransaksiagent/:id" element={<Dtransaksiagent />} />
+          <Route path="/admin/Laporan/btransfer" element={<Btransfer />} />
         </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['agent']} />}>
+          <Route path="/agent/dashboard" element={<DashboardAgent />} />
+          <Route path="/agent/tiketagent" element={<TiketAgent />} />
+          <Route path="/agent/tiketterbit" element={<TiketTerbit />} />
+          <Route path="/agent/komisilaporan" element={<KomisiLaporan />} />
+          <Route path="/agent/komisiagent" element={<KomisiAgent />} />
+          <Route path="/agent/komisi/detailpriodeagent/:id" element={<DetailPeriodeAgent />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['user']} />}>
+          <Route path="/user" element={<DashboardUser />}>
+            <Route index element={<ProfilUser />} />
+            <Route path="profil" element={<ProfilUser />} />
+            <Route path="tiket" element={<Tiket />} />
+            <Route path="pesanansaya" element={<PesananSaya />} />
+            <Route path="payment-success/:orderId" element={<PaymentSuccess />} />
+          </Route>
+        </Route>
+
       </Routes>
     </AuthProvider>
   );
