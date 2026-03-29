@@ -13,6 +13,7 @@ const Sidebar = () => {
     { name: "Dashboard",               icon: <FaTachometerAlt size={16} />, path: "/admin/dashboard" },
     { name: "Managemen User",          icon: <FaUsers size={16} />,         path: "/admin/manajemenuser" },
     { name: "Managemen Agent",         icon: <FaBus size={16} />,           path: "/admin/manajemenagent" },
+    { name: "Managemen Bus",           icon: <FaCalendarAlt size={16} />,   path: "/admin/manajemenbus" },
     { name: "Managemen Jadwal & Tiket",icon: <FaCalendarAlt size={16} />,   path: "/admin/jadwaltiket" },
     { name: "Managemen Promo",         icon: <FaTag size={16} />,           path: "/admin/manajemenpromo" },
     { name: "Laporan & Monitoring",    icon: <FaChartBar size={16} />,      path: "/admin/laporanmonitoring" },

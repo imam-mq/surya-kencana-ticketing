@@ -9,7 +9,7 @@ import React, { useEffect } from "react";
  * Each seat item expected: { id, row, col, available, selected }
  */
 const SeatGridSleeper = ({ seats = { lantaiAtas: [], lantaiBawah: [] }, onToggleSeat }) => {
-  const { lantaiAtas = [], lantaiBawah = [] } = seats || {};
+  const { lantai_atas: lantaiAtas = [], lantai_bawah: lantaiBawah = [] } = seats || {};
 
   useEffect(() => {
     console.log("lantaiAtas:", lantaiAtas);

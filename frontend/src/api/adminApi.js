@@ -6,6 +6,36 @@ const adminClient = axios.create({
   withCredentials: true,
 });
 
+// =========================================================================
+// --- CSRF INTERCEPTOR ---
+// Fungsi ini otomatis berjalan sesaat sebelum request (POST/PUT/DELETE) 
+// =========================================================================
+adminClient.interceptors.request.use((config) => {
+  const getCookie = (name) => {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  };
+  
+  const csrfToken = getCookie('csrftoken');
+  if (csrfToken) {
+    config.headers['X-CSRFToken'] = csrfToken; // <-- Menempelkan KTP keamanan di sini
+  }
+  
+  return config;
+});
+// =========================================================================
+
+
 // --- DASHBOARD & USERS ---
 export const getAdminUsers = async () => {
   const res = await adminClient.get('/admin/users/');
@@ -96,5 +126,23 @@ export const getAdminLaporanTransaksi = async (filters) => {
 
 export const getAdminLaporanTransaksiDetail = async (id) => {
   const res = await adminClient.get(`/admin/laporan-transaksi/${id}/detail/`);
+  return res.data;
+};
+
+// Tambah bus 
+export const createAdminBus = async (payload) => {
+  const res = await adminClient.post('/admin/bus/', payload);
+  return res.data;
+};
+
+// fungsi edit bus
+export const updateAdminBus = async (id, payload) => {
+  const res = await adminClient.put(`/admin/bus/${id}/`, payload);
+  return res.data;
+};
+
+// fungsi delet bus
+export const deleteAdminBus = async (id) => {
+  const res = await adminClient.delete(`/admin/bus/${id}/`);
   return res.data;
 };

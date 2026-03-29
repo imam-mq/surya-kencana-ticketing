@@ -8,8 +8,8 @@ import DataPenumpang from "./datapenumpang/DataPenumpang";
 import LoadingDanSukses from "./loadingdansukses/LoadingDanSukses";
 
 // Komponen kursi bis
-import SeatGridInline28 from "./kursi/SeatGridInline28";
-import SeatGridSleeper from "./kursi/SeatGridSleeper";
+import SeatGridInline28 from '../agent/kursi/SeatGridInline28';
+import SeatGridSleeper from '../agent/kursi/SeatGridSleeper';
 
 // --- IMPORT API & FORMATTER ---
 import { searchAgentSchedule, getAgentSeats, createAgentBooking } from "../../api/agentApi";

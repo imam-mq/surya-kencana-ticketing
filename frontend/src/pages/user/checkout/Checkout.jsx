@@ -224,7 +224,7 @@ const Checkout = ({ data, onBack }) => {
                 disabled={loadingProses}
                 className={`w-full py-3 rounded-xl font-bold text-sm transition shadow-md ${loadingProses ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
               >
-                {loadingProses ? 'Memproses...' : 'Lanjut Pembayaran'}
+                {loadingProses ? 'Memproses...' : 'Proses Pembayaran'}
               </button>
             </div>
           </div>

@@ -44,6 +44,7 @@ import TiketTerjual from "./pages/admin/Laporan/TiketTerjual";
 import AgentTransaksi from "./pages/admin/Laporan/AgentTransaksi";
 import Dtransaksiagent from "./pages/admin/Laporan/Dtransaksiagent";
 import Btransfer from "./pages/admin/Laporan/Btransfer";
+import ManajemenBus from "./pages/admin/ManajemenBus";
 
 // ---  AGENT PAGES  ---
 import DashboardAgent from "./pages/agent/DashboardAgent";
@@ -76,6 +77,7 @@ function App() {
           <Route path="/admin/jadwaltiket" element={<JadwalTiket />} />
           <Route path="/admin/tambah-jadwal" element={<TambahJadwal />} />
           <Route path="/admin/edit-jadwal/:id" element={<EditJadwal />} />
+          <Route path="/admin/manajemenbus" element={<ManajemenBus />} />
           <Route path="/admin/detail-jadwal/:id" element={<DetailJadwal />} />
           <Route path="/admin/manajemenpromo" element={<ManajemenPromo />} />
           <Route path="/admin/TambahPromo" element={<TambahPromo />} />

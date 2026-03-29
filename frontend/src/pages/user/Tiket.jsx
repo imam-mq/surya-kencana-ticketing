@@ -3,9 +3,11 @@ import { FaBus, FaCalendarAlt, FaArrowRight } from "react-icons/fa";
 
 // --- PERBAIKAN IMPORT ASSETS & KOMPONEN ---
 import LogoSK1 from "../../assets/images/SK-Logo1.png";
-import SeatGridInline28 from "../../components/kursi/SeatGridInline28";
-import SeatGridSleeper from "../../components/kursi/SeatGridSleeper";
 import Checkout from "./checkout/Checkout";
+
+// Komponen kursi bis
+import SeatGridInline28 from '../../components/kursi/SeatGridInline28';
+import SeatGridSleeper from '../../components/kursi/SeatGridSleeper';
 
 // --- IMPORT FUNGSI API ---
 import { getJadwalUser, getSeatsUser } from "../../api/userApi";
@@ -129,8 +131,8 @@ const Tiket = () => {
         setSeatsMap(prev => ({ 
           ...prev, 
           [tripId]: { 
-            lantaiAtas: data.lantai_atas || [], 
-            lantaiBawah: data.lantai_bawah || [] 
+            lantai_atas: data.lantai_atas || [], 
+            lantai_bawah: data.lantai_bawah || [] 
           } 
         }));
       } else {
@@ -157,8 +159,8 @@ const Tiket = () => {
       const cur = copy[tripId];
       const update = (s) => s.id === seatId ? { ...s, selected: !s.selected } : s;
       
-      if (cur?.lantaiAtas) {
-        copy[tripId] = { lantaiAtas: cur.lantaiAtas.map(update), lantaiBawah: cur.lantaiBawah.map(update) };
+      if (cur?.lantai_atas) {
+        copy[tripId] = { lantai_atas: cur.lantaiAtas.map(update), lantai_bawah: cur.lantaiBawah.map(update) };
       } else if (Array.isArray(cur)) {
         copy[tripId] = cur.map(update);
       }
@@ -225,7 +227,7 @@ const Tiket = () => {
                   {openTripId === t.id && (
                     <div id={`seat-panel-${t.id}`} className="mt-4 bg-gray-50 p-6 rounded-lg border shadow-inner flex flex-col md:flex-row gap-8">
                       <div className="flex-1">
-                        {seatsMap[t.id]?.lantaiAtas ? (
+                        {seatsMap[t.id]?.lantai_atas ? (
                           <SeatGridSleeper seats={seatsMap[t.id]} onToggleSeat={(sid)=>toggleSeat(t.id, sid)}/>
                         ) : (
                           <SeatGridInline28 seats={seatsMap[t.id] || []} onToggleSeat={(sid)=>toggleSeat(t.id, sid)}/>
@@ -241,7 +243,7 @@ const Tiket = () => {
                           <p className="text-xs text-gray-500">Total Harga</p>
                           <p className="text-xl font-black">Rp {(selectedSeatsMap[t.id]?.length * Number(t.harga || 0)).toLocaleString('id-ID')}</p>
                         </div>
-                        <button onClick={() => handleProceed(t)} className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-700 transition">Bayar Sekarang</button>
+                        <button onClick={() => handleProceed(t)} className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-700 transition">Lanjutkan Pembayaran</button>
                       </div>
                     </div>
                   )}
