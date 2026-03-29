@@ -28,8 +28,22 @@ export default function Register() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const handleChangeAngka = (e) => {
+    const { name, value } = e.target;
+    // Hapus semua selain angka
+    const hanyaAngka = value.replace(/\D/g, "");
+    setForm({ ...form, [name]: hanyaAngka });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (form.noKtp.length !== 16) {
+      return alert("Nomor KTP wajib 16 digit!");
+    }
+    if (form.noHp.length < 10) {
+      return alert("Nomor HP minimal 10 digit!");
+    }
 
     if (form.password !== form.konfirmasiPassword) {
       setError("Password dan konfirmasi tidak sama");
@@ -74,10 +88,9 @@ export default function Register() {
     e.target.style.background = "#fafafa";
   };
 
-  const inputClass =
-    "w-full px-4 py-2.5 text-sm rounded-lg border outline-none transition-all duration-200";
+  const inputClass = "w-full px-4 py-2.5 text-sm rounded-lg border outline-none transition-all duration-200";
 
-  const InputField = ({ label, type = "text", name, placeholder = "" }) => (
+  const InputField = ({ label, type = "text", name, placeholder = "", onChange, ...props }) => (
     <div className="flex flex-col gap-1.5">
       <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
         {label}
@@ -86,13 +99,14 @@ export default function Register() {
         type={type}
         name={name}
         value={form[name]}
-        onChange={handleChange}
+        onChange={onChange || handleChange} 
         placeholder={placeholder}
         className={inputClass}
         style={inputBase}
         onFocus={handleFocus}
         onBlur={handleBlur}
         required
+        {...props}
       />
     </div>
   );
@@ -193,7 +207,16 @@ export default function Register() {
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <InputField label="Email" name="email" type="email" placeholder="nama@email.com" />
-                <InputField label="No KTP" name="noKtp" type="number" placeholder="16 digit NIK" />
+                <InputField 
+                  label="No KTP" 
+                  name="noKtp" 
+                  type="text"
+                  placeholder="16 digit NIK" 
+                  value={form.noKtp}
+                  onChange={handleChangeAngka}
+                  maxLength="16" 
+                  minLength="16"
+                />
               </div>
             </div>
 
@@ -232,7 +255,16 @@ export default function Register() {
                 <InputField label="Alamat" name="alamat" placeholder="Jl. Nama Jalan No. X" />
                 <div className="grid grid-cols-2 gap-3">
                   <InputField label="Kota / Kabupaten" name="kotaKab" placeholder="Kota Anda" />
-                  <InputField label="No HP" name="noHp" type="tel" placeholder="08xxxxxxxxxx" />
+                  <InputField 
+                    label="No HP" 
+                    name="noHp" 
+                    type="text"
+                    placeholder="Contoh: 08123456789" 
+                    value={form.noHp}
+                    onChange={handleChangeAngka} 
+                    maxLength="15" 
+                    minLength="10"
+                  />
                 </div>
               </div>
             </div>

@@ -125,12 +125,14 @@ const Tiket = () => {
   const fetchAndStoreSeats = async (tripId, isSleeperFlag) => {
     try {
       const data = await getSeatsUser(tripId);
-      const isSleeper = data && (data.lantai_atas || data.lantai_bawah);
+      // deteksi sleeper bus
+      const isSleeper = data && (data.lantai_atas !== undefined || data.lantai_bawah !== undefined);
       
       if (isSleeperFlag || isSleeper) {
         setSeatsMap(prev => ({ 
           ...prev, 
           [tripId]: { 
+            // nge cek default arry
             lantai_atas: data.lantai_atas || [], 
             lantai_bawah: data.lantai_bawah || [] 
           } 
@@ -143,7 +145,7 @@ const Tiket = () => {
       console.error("fetch seats error", e);
     }
   };
-
+  
   const toggleOpen = async (tripId) => {
     if (openTripId === tripId) { setOpenTripId(null); return; }
     setOpenTripId(tripId);
@@ -157,10 +159,16 @@ const Tiket = () => {
     setSeatsMap(prev => {
       const copy = { ...prev };
       const cur = copy[tripId];
+      
+      if (!cur) return copy; 
+
       const update = (s) => s.id === seatId ? { ...s, selected: !s.selected } : s;
       
-      if (cur?.lantai_atas) {
-        copy[tripId] = { lantai_atas: cur.lantaiAtas.map(update), lantai_bawah: cur.lantaiBawah.map(update) };
+      if (cur.lantai_atas !== undefined || cur.lantai_bawah !== undefined) {
+        copy[tripId] = { 
+          lantai_atas: (cur.lantai_atas || []).map(update),   
+          lantai_bawah: (cur.lantai_bawah || []).map(update)  
+        };
       } else if (Array.isArray(cur)) {
         copy[tripId] = cur.map(update);
       }
