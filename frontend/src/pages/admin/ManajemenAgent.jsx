@@ -17,13 +17,28 @@ const AgentFormModal = ({ visible, mode = "create", initial = {}, onClose, onSav
   useEffect(() => {
     if (visible) {
       setForm({
-        username: initial.username || "", first_name: initial.first_name || "", last_name: initial.last_name || "", email: initial.email || "", phone: initial.telepon || initial.phone || "", location: initial.alamat || initial.location || "", password: "", password_confirm: "",
+        username: initial.username || "",
+        email: initial.email || "",
+        nama_lengkap: initial.nama_lengkap || "",
+        telepon: initial.telepon || "",
+        alamat: initial.alamat || "",
+        no_ktp: initial.no_ktp || "",
+        jenis_kelamin: initial.jenis_kelamin || "",
+        kota_kab: initial.kota_kab || "",
+        password: "",
+        password_confirm: "",
       });
       setError(null);
     }
   }, [initial, visible]);
 
   const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleChangeAngka = (e) => {
+    const { name, value } = e.target;
+    const hanyaAngka = value.replace(/\D/g, "");
+    setForm((f) => ({ ...f, [name]: hanyaAngka }));
+  }
 
   const submit = async (e) => {
     e && e.preventDefault();
@@ -33,6 +48,13 @@ const AgentFormModal = ({ visible, mode = "create", initial = {}, onClose, onSav
     if (mode === "create") {
       if (!form.password || form.password.length < 8) return setError("Password minimal 8 karakter.");
       if (form.password !== form.password_confirm) return setError("Password dan konfirmasi tidak cocok.");
+    }
+
+    if (form.no_ktp && form.no_ktp.length !== 16) {
+      return setError("Nomor KTP wajib 16 digit angka.");
+    }
+    if (form.telepon && form.telepon.length < 10) {
+      return setError("Nomor Telepon minimal 10 digit angka.");
     }
 
     setSaving(true);
@@ -64,9 +86,9 @@ const AgentFormModal = ({ visible, mode = "create", initial = {}, onClose, onSav
           <input name="username" value={form.username} onChange={onChange} placeholder="Username" className="border rounded px-3 py-2" disabled={mode === 'edit'} />
           <input name="email" value={form.email} onChange={onChange} placeholder="Email" type="email" className="border rounded px-3 py-2" />
           <input name="nama_lengkap" value={form.nama_lengkap} onChange={onChange} placeholder="Nama Lengkap" className="border rounded px-3 py-2 md:col-span-2" />
-          <input name="telepon" value={form.telepon} onChange={onChange} placeholder="Nomor Telepon" className="border rounded px-3 py-2" />
+          <input name="telepon" value={form.telepon} onChange={handleChangeAngka} maxLength="15" minLength="10" placeholder="Nomor Telepon (Min. 10 digit)" className="border rounded px-3 py-2" />
           <input name="alamat" value={form.alamat} onChange={onChange} placeholder="Alamat / Lokasi" className="border rounded px-3 py-2" />
-          <input name="no_ktp" value={form.no_ktp} onChange={onChange} placeholder="Nomor KTP" className="border rounded px-3 py-2" />
+          <input name="no_ktp" value={form.no_ktp} onChange={handleChangeAngka} maxLength="16" minLength="16" placeholder="Nomor KTP (16 Digit)" className="border rounded px-3 py-2" />
           <select name="jenis_kelamin" value={form.jenis_kelamin} onChange={onChange} className="border rounded px-3 py-2 bg-white"><option value="">Pilih Jenis Kelamin</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>
           <input name="kota_kab" value={form.kota_kab} onChange={onChange} placeholder="Kota / Kabupaten" className="border rounded px-3 py-2 md:col-span-2" />
           <div className="col-span-1 md:col-span-2 mt-2 border-t pt-2"><p className="text-sm text-gray-500 mb-2">{mode === "create" ? "Set Password" : "Ubah Password (Kosongkan jika tidak ingin mengubah)"}</p></div>

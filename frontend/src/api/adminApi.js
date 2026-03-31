@@ -42,13 +42,13 @@ export const getAdminUsers = async () => {
   return res.data;
 };
 
-// --- AGENTS ---
+// --- ADD AGENTS ---
 export const getAdminAgents = async () => {
   const res = await adminClient.get('/admin/agents/');
   return res.data;
 };
 export const createAdminAgent = async (payload) => {
-  const res = await adminClient.post('/admin/agents/', payload);
+  const res = await adminClient.post('/admin/agents/add/', payload);
   return res.data;
 };
 export const updateAdminAgent = async (id, payload) => {
@@ -56,7 +56,7 @@ export const updateAdminAgent = async (id, payload) => {
   return res.data;
 };
 export const deleteAdminAgent = async (id) => {
-  const res = await adminClient.delete(`/admin/agents/${id}/`);
+  const res = await adminClient.delete(`/agents/${id}/delete/`); 
   return res.data;
 };
 
