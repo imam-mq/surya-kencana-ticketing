@@ -68,7 +68,7 @@ export const getIssuedTickets = async () => {
 };
 
 const config = {
-  withCredentials: true, // <-- INI KUNCI UTAMANYA! 🔑
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
