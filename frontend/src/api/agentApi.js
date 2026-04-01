@@ -67,3 +67,20 @@ export const getIssuedTickets = async () => {
   return res.data;
 };
 
+const config = {
+  withCredentials: true, // <-- INI KUNCI UTAMANYA! 🔑
+  headers: {
+    'Content-Type': 'application/json'
+  }
+};
+
+export const getMyProfile = async () => {
+  const res = await agentClient.get('/agen/profil_agent/', config);
+  return res.data;
+};
+
+
+export const updateMyProfile = async (payload) => {
+  const res = await agentClient.put('/agen/profil_agent/', payload, config);
+  return res.data;
+};

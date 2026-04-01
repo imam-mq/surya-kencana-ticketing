@@ -53,6 +53,7 @@ import TiketTerbit from "./pages/agent/TiketTerbit";
 import KomisiLaporan from "./pages/agent/KomisiLaporan";
 import KomisiAgent from "./pages/agent/KomisiAgent";
 import DetailPeriodeAgent from './pages/agent/komisi/detailpriodeagent';
+import ProfilAgent from "./pages/agent/ProfilAgent";
 
 function App() {
   return (
@@ -98,6 +99,7 @@ function App() {
           <Route path="/agent/komisilaporan" element={<KomisiLaporan />} />
           <Route path="/agent/komisiagent" element={<KomisiAgent />} />
           <Route path="/agent/komisi/detailpriodeagent/:id" element={<DetailPeriodeAgent />} />
+          <Route path="/agent/profilagent" element={<ProfilAgent />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={['user']} />}>
