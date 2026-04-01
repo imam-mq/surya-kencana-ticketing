@@ -9,88 +9,20 @@ import {
   IdCard,
   Lock,
   Save,
-  Eye,
-  EyeOff,
   Shield,
 } from "lucide-react";
+
+// --- IMPORT LAYOUT ---
 import Sidebar_Agent from './layout/Sidebar_Agent';
 import Agent_Navbar from './layout/Agent_Navbar';
+
+// --- IMPORT KOMPONEN UI ---
+import InputField from '../../components/ui/InputField';
+import PasswordField from '../../components/ui/PasswordField';
+import SectionCard from '../../components/ui/SectionCard';
+
+// --- IMPORT API ---
 import { getMyProfile, updateMyProfile } from '../../api/agentApi';
-
-// ─── Input Field ──────────────────────────────────────────────────────────────
-const InputField = ({ label, icon: Icon, type = "text", value, onChange, placeholder }) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-      {label}
-    </label>
-    <div className="relative">
-      {Icon && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-          <Icon size={13} className="text-gray-400" />
-        </div>
-      )}
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-200 bg-white text-gray-900 text-sm outline-none transition-all focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
-        style={{ padding: Icon ? "8px 12px 8px 34px" : "8px 12px" }}
-      />
-    </div>
-  </div>
-);
-
-// ─── Password Field ───────────────────────────────────────────────────────────
-const PasswordField = ({ label, value, onChange, placeholder }) => {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        {label}
-      </label>
-      <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-          <Lock size={13} className="text-gray-400" />
-        </div>
-        <input
-          type={show ? "text" : "password"}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          className="w-full rounded-lg border border-gray-200 bg-white text-gray-900 text-sm outline-none transition-all focus:border-blue-900 focus:ring-2 focus:ring-blue-900/10"
-          style={{ padding: "8px 40px 8px 34px" }}
-        />
-        <button
-          type="button"
-          onClick={() => setShow(!show)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          {show ? <EyeOff size={13} /> : <Eye size={13} />}
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ─── Section Card ─────────────────────────────────────────────────────────────
-const SectionCard = ({ icon: Icon, title, subtitle, accentColor = "#1e3a8a", children }) => (
-  <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-    <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-100">
-      <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: `${accentColor}14` }}
-      >
-        <Icon size={15} style={{ color: accentColor }} />
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-gray-900">{title}</p>
-        {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
-      </div>
-    </div>
-    <div className="px-5 py-4">{children}</div>
-  </div>
-);
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 const ProfilAgent = () => {
@@ -112,13 +44,12 @@ const ProfilAgent = () => {
 
   const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
-  // ─── AMBIL DATA DARI DATABASE SAAT HALAMAN DIBUKA ───
+  // ─── MENGAMBIL DATA DARI DB ───
   React.useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await getMyProfile();
         if (res.success || res.data) {
-          // Timpa form kosong dengan data asli dari database
           setForm((prev) => ({ ...prev, ...res.data }));
         }
       } catch (err) {
@@ -128,7 +59,7 @@ const ProfilAgent = () => {
     fetchProfile();
   }, []);
 
-  // ── Password strength ──
+  // ── Password  ──
   const strength = (() => {
     const p = form.password;
     if (!p) return 0;
@@ -153,15 +84,12 @@ const ProfilAgent = () => {
     setLoading(true);
     setStatus({ type: '', msg: '' });
     try {
-      // Buat paket khusus profil (tanpa mengikutsertakan password)
       const payload = {
         nama_lengkap: form.nama_lengkap,
         username: form.username,
         telepon: form.telepon,
         alamat: form.alamat,
         no_ktp: form.no_ktp,
-        // email tidak dikirim jika diasumsikan tidak boleh diubah, 
-        // tapi kalau boleh, tambahkan: email: form.email
       };
       
       const res = await updateMyProfile(payload);
@@ -183,13 +111,10 @@ const ProfilAgent = () => {
     setLoading(true);
     setStatus({ type: '', msg: '' });
     try {
-      // Buat paket khusus password saja
       const payload = { password: form.password };
-      
       const res = await updateMyProfile(payload);
       setStatus({ type: 'success', msg: 'Password berhasil diperbarui!' });
       
-      // Kosongkan kolom password setelah sukses
       setForm((prev) => ({ ...prev, password: '', password_confirm: '' }));
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Gagal memperbarui password.';
@@ -310,10 +235,11 @@ const ProfilAgent = () => {
               <div className="flex justify-end mt-4">
                 <button
                   onClick={handleSimpanProfil}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-white text-sm font-semibold transition-colors"
+                  disabled={loading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-white text-sm font-semibold transition-colors disabled:opacity-70"
                 >
                   <Save size={13} />
-                  Simpan Data Diri
+                  {loading ? 'Menyimpan...' : 'Simpan Data Diri'}
                 </button>
               </div>
             </SectionCard>
@@ -382,13 +308,14 @@ const ProfilAgent = () => {
               <div className="flex justify-end mt-4">
                 <button
                   onClick={handleSimpanPassword}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold transition-colors"
+                  disabled={loading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold transition-colors disabled:opacity-70"
                   style={{ background: '#4f46e5' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#4338ca'}
                   onMouseLeave={e => e.currentTarget.style.background = '#4f46e5'}
                 >
                   <Save size={13} />
-                  Perbarui Password
+                  {loading ? 'Menyimpan...' : 'Perbarui Password'}
                 </button>
               </div>
             </SectionCard>
