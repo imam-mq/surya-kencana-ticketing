@@ -1,49 +1,31 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { FaBus, FaSun } from "react-icons/fa";
 import SubmitButton from "../../components/ui/SubmitButton";
+import { processForgotPassword } from "../../services/authService";
 
-// --- 1. IMPORT API & CONTEXT ---
-import { loginUserApi, getCsrfToken } from "../../api/authApi";
-import { useAuth } from "../../context/AuthContext";
-
-export default function Login() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const navigate = useNavigate();
-  const { login } = useAuth(); // <--- Mengambil fungsi login dari Context
-  
   const primaryColor = "#314D9C";
   const cardColor = "#D4C8A6";
 
-  // --- PANGGIL FUNGSI CSRF DARI API ---
-  useEffect(() => {
-    getCsrfToken().catch((err) => console.error("Gagal get CSRF:", err));
-  }, []);
-
-  // --- FUNGSI SUBMIT MENGGUNAKAN API ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setMessage("");
     setIsLoading(true);
 
     try {
-      const data = await loginUserApi({ email, password });
-
-      if (data.success) {
-        alert("Login berhasil!");
-        
-        login(data); // Simpan ke Context
-        navigate("/user/profil"); // Pindah halaman
-      } else {
-        setError(data.message || "Email atau Password salah");
-      }
-    } catch (error) {
-      // Tangkap error dari backend (401)
-      setError(error.response?.data?.message || "Terjadi kesalahan koneksi ke server");
+      // serrvice untuk validasi request api
+      const response = await processForgotPassword(email);
+      setMessage(response.message);
+      setEmail("");
+    } catch (err) {
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +57,6 @@ export default function Login() {
           boxShadow: "0 25px 60px rgba(49,77,156,0.35), 0 8px 20px rgba(0,0,0,0.15)",
         }}
       >
-        {/* Top accent bar */}
         <div
           className="h-1.5 w-full"
           style={{ background: `linear-gradient(90deg, ${primaryColor}, ${cardColor})` }}
@@ -98,42 +79,29 @@ export default function Login() {
             >
               <FaBus className="text-xl" style={{ color: cardColor }} />
             </div>
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{
-                background: "rgba(212,200,166,0.15)",
-                border: "1px solid rgba(212,200,166,0.25)",
-              }}
-            >
-              <FaSun className="text-base" style={{ color: cardColor }} />
-            </div>
           </div>
-          <h1 className="text-white font-bold text-xl tracking-wide">Surya Kencana</h1>
-          <p className="text-white/50 text-xs tracking-widest uppercase mt-1">
-            Portal Penumpang
-          </p>
+          <h1 className="text-white font-bold text-xl tracking-wide">Pemulihan Akun</h1>
         </div>
 
         {/* Form area */}
         <div className="px-8 py-8">
-          <div className="mb-6">
-            <h2 className="text-gray-800 font-bold text-lg">Selamat Datang</h2>
-            <p className="text-gray-500 text-sm mt-0.5">
-              Masuk untuk memesan tiket perjalanan Anda
+          <div className="mb-6 text-center">
+            <h2 className="text-gray-800 font-bold text-lg">Lupa Password?</h2>
+            <p className="text-gray-500 text-sm mt-1">
+              Masukkan email Anda dan kami akan mengirimkan instruksi untuk mengatur ulang kata sandi.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                Email
+                Alamat Email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Masukkan email Anda"
+                placeholder="email@contoh.com"
                 className="w-full px-4 py-2.5 text-sm rounded-lg border outline-none transition-all duration-200"
                 style={{ borderColor: "#e5e7eb", background: "#fafafa" }}
                 onFocus={(e) => {
@@ -150,42 +118,7 @@ export default function Login() {
               />
             </div>
 
-            {/* Password */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Password
-                </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-medium hover:underline"
-                  style={{ color: primaryColor }}
-                >
-                  Lupa Password?
-                </Link>
-              </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan password"
-                className="w-full px-4 py-2.5 text-sm rounded-lg border outline-none transition-all duration-200"
-                style={{ borderColor: "#e5e7eb", background: "#fafafa" }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = primaryColor;
-                  e.target.style.boxShadow = `0 0 0 3px rgba(49,77,156,0.12)`;
-                  e.target.style.background = "#fff";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "#e5e7eb";
-                  e.target.style.boxShadow = "none";
-                  e.target.style.background = "#fafafa";
-                }}
-                required
-              />
-            </div>
-
-            {/* Error message */}
+            {/* Notifikasi Error */}
             {error && (
               <div
                 className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm"
@@ -195,32 +128,40 @@ export default function Login() {
                   color: "#dc2626",
                 }}
               >
-                <span className="text-base">⚠️</span>
-                <span>{error}</span>
+                <span>⚠️ {error}</span>
               </div>
             )}
 
-            <div className="pt-1">
-              <SubmitButton isLoading={isLoading}>Masuk</SubmitButton>
+            {/* Notifikasi Sukses */}
+            {message && (
+              <div
+                className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm"
+                style={{
+                  background: "rgba(34,197,94,0.08)",
+                  border: "1px solid rgba(34,197,94,0.2)",
+                  color: "#16a34a",
+                }}
+              >
+                <span>✅ {message}</span>
+              </div>
+            )}
+
+            <div className="pt-2">
+              <SubmitButton isLoading={isLoading}>Kirim Link Reset</SubmitButton>
             </div>
           </form>
 
-          {/* Register link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
-              Belum punya akun?{" "}
-              <Link
-                to="/register"
-                className="font-semibold hover:underline"
-                style={{ color: primaryColor }}
-              >
-                Daftar Sekarang
-              </Link>
-            </p>
+            <Link
+              to="/login"
+              className="text-sm font-semibold hover:underline"
+              style={{ color: primaryColor }}
+            >
+              ← Kembali ke Login
+            </Link>
           </div>
         </div>
 
-        {/* Bottom accent */}
         <div
           className="h-1 w-full"
           style={{ background: `linear-gradient(90deg, ${cardColor}, ${primaryColor})` }}

@@ -35,3 +35,13 @@ export const verifyEmailApi = async (token) => {
   const res = await authClient.post('/verify-email/', { token });
   return res.data;
 };
+
+export const requestPasswordReset = async (email) => {
+  const res = await authClient.post('/request-reset-password/', { email });
+  return res.data;
+};
+
+export const confirmPasswordReset = async (payload) => {
+  const res = await authClient.post('/confirm-reset-password/', payload);
+  return res.data;
+};
