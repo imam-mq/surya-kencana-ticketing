@@ -53,7 +53,7 @@ export default function PesananSaya() {
   const fetchPesanan = async (page) => {
     setLoading(true);
     try {
-      // TODO: Ganti endpoint sesuai route backend Anda
+      // endpoint dari be
       const res = await fetch(`/api/pesanan-saya?page=${page}&per_page=${perPage}`, {
         headers: {
           Accept: "application/json",
@@ -61,7 +61,7 @@ export default function PesananSaya() {
         },
       });
       const json = await res.json();
-      // TODO: Sesuaikan struktur response backend Anda
+      // respon data dari BE
       setPesanan(json.data ?? []);
       setTotalEntri(json.total ?? 0);
     } catch (err) {
@@ -134,6 +134,7 @@ export default function PesananSaya() {
                   "Nama",
                   "Email",
                   "Kontak",
+                  "Status",
                 ].map((col) => (
                   <Th
                     key={col}
@@ -167,21 +168,17 @@ export default function PesananSaya() {
             <Tbody>
               {loading ? (
                 <Tr>
-                  <Td colSpan={10} textAlign="center" py={12}>
+                  <Td colSpan={11} textAlign="center" py={12}>
                     <Flex justify="center" align="center" gap={3}>
                       <Spinner size="sm" color="blue.500" />
-                      <Text fontSize="sm" color="gray.400">
-                        Memuat data...
-                      </Text>
+                      <Text fontSize="sm" color="gray.400">Memuat data...</Text>
                     </Flex>
                   </Td>
                 </Tr>
               ) : pesanan.length === 0 ? (
                 <Tr>
-                  <Td colSpan={10} textAlign="center" py={14}>
-                    <Text fontSize="sm" color="gray.400">
-                      Belum ada pesanan.
-                    </Text>
+                  <Td colSpan={11} textAlign="center" py={14}>
+                    <Text fontSize="sm" color="gray.400">Belum ada pesanan.</Text>
                   </Td>
                 </Tr>
               ) : (
@@ -193,44 +190,31 @@ export default function PesananSaya() {
                     borderColor="gray.100"
                     transition="background 0.15s"
                   >
-                    <Td px={4} py={3} color="gray.400" fontSize="sm">
-                      {from + index}
-                    </Td>
-                    {/* TODO: Sesuaikan field dengan response API Anda */}
-                    <Td px={4} py={3} color="gray.500" fontSize="sm" whiteSpace="nowrap">
-                      {item.tanggal}
-                    </Td>
+                    <Td px={4} py={3} color="gray.400" fontSize="sm">{from + index}</Td>
+                    <Td px={4} py={3} color="gray.500" fontSize="sm" whiteSpace="nowrap">{item.tanggal}</Td>
                     <Td px={4} py={3}>
-                      <Badge
-                        bg="blue.50"
-                        color="blue.600"
-                        borderRadius="md"
-                        px={2}
-                        py="3px"
-                        fontSize="xs"
-                        fontWeight="500"
-                      >
+                      <Badge bg="blue.50" color="blue.600" borderRadius="md" px={2} py="3px" fontSize="xs" fontWeight="500">
                         {item.no_kursi}
                       </Badge>
                     </Td>
-                    <Td px={4} py={3} fontSize="sm" color="gray.700">
-                      {item.keberangkatan}
+                    <Td px={4} py={3} fontSize="sm" color="gray.700">{item.keberangkatan}</Td>
+                    <Td px={4} py={3} fontSize="sm" color="gray.700">{item.kedatangan}</Td>
+                    <Td px={4} py={3} fontSize="sm" color="gray.500">{item.jenis_kelamin}</Td>
+                    <Td px={4} py={3} fontSize="sm" fontWeight="500" color="gray.800">{item.nama}</Td>
+                    <Td px={4} py={3} fontSize="xs" color="gray.500">{item.email}</Td>
+                    <Td px={4} py={3} fontSize="xs" color="gray.500">{item.kontak}</Td>
+                    
+                    {/* Render Status Pembayaran */}
+                    <Td px={4} py={3}>
+                      <Badge
+                        bg={item.status === 'PAID' ? "green.50" : "orange.50"}
+                        color={item.status === 'PAID' ? "green.600" : "orange.600"}
+                        borderRadius="md" px={2} py="3px" fontSize="xs" fontWeight="600"
+                      >
+                        {item.status || "PENDING"}
+                      </Badge>
                     </Td>
-                    <Td px={4} py={3} fontSize="sm" color="gray.700">
-                      {item.kedatangan}
-                    </Td>
-                    <Td px={4} py={3} fontSize="sm" color="gray.500">
-                      {item.jenis_kelamin}
-                    </Td>
-                    <Td px={4} py={3} fontSize="sm" fontWeight="500" color="gray.800">
-                      {item.nama}
-                    </Td>
-                    <Td px={4} py={3} fontSize="xs" color="gray.500">
-                      {item.email}
-                    </Td>
-                    <Td px={4} py={3} fontSize="xs" color="gray.500">
-                      {item.kontak}
-                    </Td>
+
                     <Td px={4} py={3} isNumeric>
                       <Button
                         size="sm"
@@ -242,6 +226,7 @@ export default function PesananSaya() {
                         fontWeight="500"
                         borderRadius="md"
                         leftIcon={<PrinterIcon />}
+                        isDisabled={item.status !== 'PAID'} // <-- Sesuai SRS: akan aktif jika pembayaran berhasil
                         onClick={() => handleCetakTiket(item.id)}
                       >
                         Cetak tiket
