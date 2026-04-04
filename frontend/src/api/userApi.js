@@ -90,11 +90,12 @@ export const getPesananUser = async (page = 1, perPage = 10) => {
 };
 
 // download tiket pdf
-export const downloadTicketPdf = async (ticketId) => {
-  const res = await fetch(`${API_BASE_URL}/ticket/${ticketId}/download/`, {
+export const downloadTicketPdf = async (orderId) => {
+  const res = await fetch(`${API_BASE_URL}/order/${orderId}/download/`, {
     method: "GET",
-      credentials: "include",
+    credentials: "include",
   });
+  
   if (!res.ok) throw new Error("Gagal mengunduh tiket");
   
   return await res.blob(); 
