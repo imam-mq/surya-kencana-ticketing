@@ -25,7 +25,7 @@ export const updateUserProfile = async (userId, userData) => {
 
 // mengambil data jadwal
 export const getJadwalUser = async (filters = null) => {
-  let url = `${API_BASE_URL}/jadwal/`;
+  let url = `${API_BASE_URL}/jadwal/search/`;
   if (filters) {
     const params = new URLSearchParams();
     if (filters.origin) params.append("asal", filters.origin);
@@ -73,4 +73,29 @@ export const cancelOrder = async (orderId) => {
     credentials: "include",
   });
   return await res.json();
+};
+
+// riwayat pesanan
+export const getPesananUser = async (page = 1, perPage = 10) => {
+  
+  const res = await fetch(`${API_BASE_URL}/user/pesanan-saya/?page=${page}&per_page=${perPage}`, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json", 
+    },
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Gagal mengambil data pesanan");
+  return await res.json();
+};
+
+// download tiket pdf
+export const downloadTicketPdf = async (ticketId) => {
+  const res = await fetch(`${API_BASE_URL}/ticket/${ticketId}/download/`, {
+    method: "GET",
+      credentials: "include",
+  });
+  if (!res.ok) throw new Error("Gagal mengunduh tiket");
+  
+  return await res.blob(); 
 };

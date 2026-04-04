@@ -21,6 +21,7 @@ import {
   Icon,
 } from "@chakra-ui/react";
 import { ChevronRightIcon, ChevronLeftIcon } from "@chakra-ui/icons";
+import { getPesananUser, downloadTicketPdf } from "../../api/userApi";
 
 // Printer icon inline SVG
 const PrinterIcon = () => (
@@ -53,31 +54,38 @@ export default function PesananSaya() {
   const fetchPesanan = async (page) => {
     setLoading(true);
     try {
-      // endpoint dari be
-      const res = await fetch(`/api/pesanan-saya?page=${page}&per_page=${perPage}`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") ?? ""}`,
-        },
-      });
-      const json = await res.json();
-      // respon data dari BE
+      // memanggil fungsi api frontend atau userapi
+      const json = await getPesananUser(page, perPage);
+
       setPesanan(json.data ?? []);
       setTotalEntri(json.total ?? 0);
     } catch (err) {
-      console.error("Gagal memuat pesanan:", err);
+      console.error("Gagal Memuat Pesanan:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const totalPages = Math.max(1, Math.ceil(totalEntri / perPage));
   const from = totalEntri === 0 ? 0 : (currentPage - 1) * perPage + 1;
   const to = Math.min(currentPage * perPage, totalEntri);
 
-  const handleCetakTiket = (id) => {
-    // TODO: Implementasi cetak tiket
-    window.open(`/cetak-tiket/${id}`, "_blank");
+  const handleCetakTiket = async (id) => {
+    try {
+      //  cetak tiket
+    const blob = await downloadTicketPdf(id);
+
+    // url blob
+    const url = window.URL.createObjectURL(blob);
+
+    // pdf di tab baru
+    window.open(url, "_blank");
+
+    setTimeout(() => window.URL.revokeObjectURL(url), 100);
+    } catch (error) {
+      console.error(error);
+      alert("Gagal Cetak Tiket. Pastikan status sudah bayar / paid")
+    }
   };
 
   // Pagination dengan ellipsis
@@ -126,7 +134,7 @@ export default function PesananSaya() {
               <Tr>
                 {[
                   "No",
-                  "Tanggal",
+                  "Jadwal",
                   "No Kursi",
                   "Keberangkatan",
                   "Kedatangan",
