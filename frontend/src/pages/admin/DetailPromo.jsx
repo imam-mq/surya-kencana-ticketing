@@ -2,10 +2,9 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "./layout/Sidebar";
 import AdminNavbar from "./layout/AdminNavbar";
 import { useParams, useNavigate } from "react-router-dom";
-
-// --- IMPORT API & FORMATTER ---
-import { getPromoDetail } from "../../api/adminApi";
 import { formatTanggal } from "../../utils/formatters";
+import { getPromoDetail } from "../../api/adminApi";
+import { usePromoDetail } from "../../hooks/usePromoDetail";
 
 // ─── Stat Card ────────────────────────────────────────────────
 const StatCard = ({ label, value, icon, accent }) => (
@@ -49,23 +48,11 @@ const DetailPromo = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [promoDetail, setPromoDetail] = useState(null);
-  const [purchases, setPurchases] = useState([]);
+  // call hook
+  const { promoDetail, purchases, loading, error } = usePromoDetail(id);
 
-  useEffect(() => {
-    // Menggunakan API Luar
-    getPromoDetail(id)
-      .then((data) => {
-        setPromoDetail(data);
-      })
-      .catch((err) => {
-        console.error("Error fetching promo details:", err);
-      });
-
-    setPurchases([]);
-  }, [id]);
-
-  if (!promoDetail) {
+  // Loading Eror
+  if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar />
@@ -82,14 +69,28 @@ const DetailPromo = () => {
     );
   }
 
+  // error detail promo
+  if (error || !promoDetail) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1">
+          <AdminNavbar />
+          <div className="p-10 text-center">
+            <p className="text-red-500 font-bold mb-4">Gagal memuat data: {error}</p>
+            <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded">Kembali</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const PLACEHOLDER_ROWS = 8;
 
-  const periode =
-    promoDetail.periode ||
-    (promoDetail.start_date && promoDetail.end_date
-      ? `${formatTanggal(promoDetail.start_date)} — ${formatTanggal(promoDetail.end_date)}`
-      : "-");
-
+  // get data field be (tanggal_mulai, tanggal_berakhir)
+  const periode = promoDetail.tanggal_mulai && promoDetail.tanggal_selesai
+      ? `${formatTanggal(promoDetail.tanggal_mulai)} — ${formatTanggal(promoDetail.tanggal_selesai)}`
+      : "-";
   const jumlahPenggunaan = promoDetail.jumlahPenggunaan || purchases.length || 0;
 
   return (
@@ -99,15 +100,12 @@ const DetailPromo = () => {
         <AdminNavbar />
 
         <div className="p-6 md:p-8 max-w-6xl mx-auto">
-
           {/* ── Page Header ── */}
           <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500 mb-1">
-                Manajemen Promo
-              </p>
-              <h2 className="text-2xl font-bold text-gray-900">Detail Promo</h2>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mt-2">
+              Daftar Promo
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Kelola semua penawaran dan diskon untuk surya kencana</p>
+            </h2>
             <button
               onClick={() => navigate("/admin/manajemenpromo")}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all"
@@ -120,192 +118,136 @@ const DetailPromo = () => {
             </button>
           </div>
 
-          {/* ── Stat Cards ── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatCard
-              label="Diskon"
-              value={`${promoDetail.discount_percent}%`}
-              icon="🏷️"
-              accent="#6366f1"
-            />
-            <StatCard
-              label="Penggunaan"
-              value={jumlahPenggunaan}
-              icon="🎟️"
-              accent="#10b981"
-            />
-            <StatCard
-              label="Status"
-              value={promoDetail.active ? "Aktif" : "Nonaktif"}
-              icon={promoDetail.active ? "✅" : "⛔"}
-              accent={promoDetail.active ? "#10b981" : "#ef4444"}
-            />
-            <StatCard
-              label="Mulai"
-              value={promoDetail.start_date ? formatTanggal(promoDetail.start_date) : "-"}
-              icon="📅"
-              accent="#f59e0b"
-            />
-          </div>
-
-          {/* ── Info Card ── */}
-          <div
-            className="bg-white rounded-2xl p-6 mb-6"
-            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04)" }}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-5 rounded-full bg-indigo-500" />
-              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">
-                Informasi Promo
-              </h3>
+            {/* ── Stat Cards ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <StatCard
+                label="Diskon"
+                value={`${promoDetail.persen_diskon}%`} 
+                icon="🏷️"
+                accent="#6366f1"
+              />
+              <StatCard
+                label="Penggunaan"
+                value={jumlahPenggunaan}
+                icon="🎟️"
+                accent="#10b981"
+              />
+              <StatCard
+                label="Status"
+                value={promoDetail.status === 'active' ? "Aktif" : "Nonaktif"}
+                icon={promoDetail.status === 'active' ? "✅" : "⛔"}
+                accent={promoDetail.status === 'active' ? "#10b981" : "#ef4444"}
+              />
+              <StatCard
+                label="Mulai"
+                value={promoDetail.tanggal_mulai ? formatTanggal(promoDetail.tanggal_mulai) : "-"}
+                icon="📅"
+                accent="#f59e0b"
+              />
             </div>
+         
+            
+          
 
-            <dl>
-              <InfoRow label="Judul Promo">{promoDetail.title}</InfoRow>
-              <InfoRow label="Deskripsi">{promoDetail.description || "-"}</InfoRow>
-              <InfoRow label="Diskon">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
-                  🏷️ {promoDetail.discount_percent}% OFF
-                </span>
-              </InfoRow>
-              <InfoRow label="Periode Promo">{periode}</InfoRow>
-              <InfoRow label="Status">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                    promoDetail.active
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-red-50 text-red-600"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      promoDetail.active ? "bg-emerald-500" : "bg-red-500"
-                    }`}
-                  />
-                  {promoDetail.active ? "Aktif" : "Tidak Aktif"}
-                </span>
-              </InfoRow>
-              <InfoRow label="Jumlah Penggunaan">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
-                  🎟️ {jumlahPenggunaan} kali digunakan
-                </span>
-              </InfoRow>
-            </dl>
-          </div>
-
-          {/* ── Tabel Pengguna Promo ── */}
-          <div
-            className="bg-white rounded-2xl overflow-hidden"
-            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04)" }}
-          >
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            {/* ── Info Card ── */}
+            <div className="bg-white rounded-2xl p-6 mb-6" style={{boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04)"}}>
+              <div className="flex items-center gap-2 mb-4">
                 <div className="w-1 h-5 rounded-full bg-indigo-500" />
                 <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">
-                  Pengguna Promo
+                  Informasi Promo
                 </h3>
               </div>
-              <span className="text-xs text-gray-400 font-medium">
-                {purchases.length} riwayat penggunaan
-              </span>
+
+              <dl>
+                {/* NAMA FIELD DARI BACKEND */}
+                <InfoRow label="Judul/Kode Promo">{promoDetail.kode_promo}</InfoRow>
+                <InfoRow label="Deskripsi">{promoDetail.deskripsi || "-"}</InfoRow>
+                <InfoRow label="Diskon">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
+                    🏷️ {promoDetail.persen_diskon}% OFF
+                  </span>
+                </InfoRow>
+                <InfoRow label="Batas Maksimal">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700">
+                    🛑 Rp {(promoDetail.maksimal_diskon || 20000).toLocaleString("id-ID")}
+                  </span>
+                </InfoRow>
+                <InfoRow label="Periode Promo">{periode}</InfoRow>
+                <InfoRow label="Status">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                      promoDetail.status === 'active'
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-red-50 text-red-600"
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        promoDetail.status === 'active' ? "bg-emerald-500" : "bg-red-500"
+                      }`}
+                    />
+                    {promoDetail.status === 'active' ? "Aktif" : "Tidak Aktif"}
+                  </span>
+                </InfoRow>
+                <InfoRow label="Jumlah Penggunaan">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700">
+                    🎟️ {jumlahPenggunaan} kali digunakan
+                  </span>
+                </InfoRow>
+              </dl>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    {["No", "Nama Pembeli", "Tanggal", "Harga Awal", "Diskon", "Harga Akhir"].map(
-                      (col, i) => (
-                        <th
-                          key={col}
-                          className={`px-5 py-3 text-xs font-semibold uppercase tracking-widest text-gray-400 ${
-                            i >= 3 ? "text-right" : "text-left"
-                          }`}
-                        >
-                          {col}
-                        </th>
-                      )
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {purchases.length > 0 ? (
-                    purchases.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-3.5 text-sm text-gray-400 font-medium w-10">
-                          {idx + 1}
-                        </td>
-                        <td className="px-5 py-3.5 text-sm font-semibold text-gray-800">
-                          {row.buyer_name || "-"}
-                        </td>
-                        <td className="px-5 py-3.5 text-sm text-gray-500">
-                          {formatTanggal(row.date) || "-"}
-                        </td>
-                        <td className="px-5 py-3.5 text-sm text-gray-700 text-right">
-                          {row.original_price
-                            ? `Rp ${row.original_price.toLocaleString("id-ID")}`
-                            : "-"}
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          {row.discount ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600">
-                              {row.discount}%
-                            </span>
-                          ) : "-"}
-                        </td>
-                        <td className="px-5 py-3.5 text-sm font-bold text-emerald-600 text-right">
-                          {row.final_price
-                            ? `Rp ${row.final_price.toLocaleString("id-ID")}`
-                            : "-"}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    Array.from({ length: PLACEHOLDER_ROWS }).map((_, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-3.5 text-sm text-gray-300">{idx + 1}</td>
-                        <td className="px-5 py-3.5">
-                          <div
-                            className="h-3 rounded-full bg-gray-100"
-                            style={{ width: `${60 + (idx % 3) * 20}px` }}
-                          />
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <div className="h-3 w-20 rounded-full bg-gray-100" />
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <div className="h-3 w-16 rounded-full bg-gray-100 ml-auto" />
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <div className="h-3 w-8 rounded-full bg-gray-100 ml-auto" />
-                        </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <div className="h-3 w-16 rounded-full bg-gray-100 ml-auto" />
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Empty state */}
-            {purchases.length === 0 && (
-              <div className="py-10 text-center border-t border-gray-50">
-                <p className="text-sm text-gray-400 font-medium">
-                  Belum ada riwayat penggunaan promo
-                </p>
-                <p className="text-xs text-gray-300 mt-1">
-                  Data akan muncul setelah promo digunakan
-                </p>
+            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04)" }}>
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-5 rounded-full bg-indigo-500" />
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                    Pengguna Promo
+                  </h3>
+                </div>
               </div>
-            )}
-          </div>
 
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      {["No", "Nama Pembeli", "Tanggal", "Harga Awal", "Diskon", "Harga Akhir"].map((col, i) => (
+                          <th key={col} className={`px-5 py-3 text-xs font-semibold uppercase tracking-widest text-gray-400 ${i >= 3 ? "text-right" : "text-left"}`}>
+                            {col}
+                          </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-50">
+                    {purchases.length > 0 ? (
+                      purchases.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-5 py-3.5 text-sm text-gray-400 font-medium w-10">{idx + 1}</td>
+                          <td className="px-5 py-3.5 text-sm font-semibold text-gray-800">{row.buyer_name || "-"}</td>
+                          <td className="px-5 py-3.5 text-sm text-gray-500">{formatTanggal(row.date) || "-"}</td>
+                          <td className="px-5 py-3.5 text-sm text-gray-700 text-right">Rp {row.original_price?.toLocaleString("id-ID") || "-"}</td>
+                          <td className="px-5 py-3.5 text-right">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600">
+                              Rp {row.discount?.toLocaleString("id-ID") || "-"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-sm font-bold text-emerald-600 text-right">Rp {row.final_price?.toLocaleString("id-ID") || "-"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-gray-400">Belum ada riwayat penggunaan.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
+  )
 };
 
 export default DetailPromo;

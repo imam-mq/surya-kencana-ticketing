@@ -47,7 +47,7 @@ const ManajemenPromo = () => {
   };
 
   const filteredPromos = promos.filter((p) =>
-    (p.nama || "").toLowerCase().includes(search.toLowerCase())
+    (p.kode_promo || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (

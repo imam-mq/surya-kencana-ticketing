@@ -31,7 +31,12 @@ const Checkout = ({ data, onBack }) => {
     fetchPromos();
   }, []);
 
-  const nominalDiskon = promoTerpilih ? (totalHargaAwal * promoTerpilih.persen_diskon) / 100 : 0;
+  let nominalDiskon = 0;
+    if (promoTerpilih) {
+      const diskonKotor = (totalHargaAwal * promoTerpilih.persen_diskon) / 100;
+      const batasMaksimal = promoTerpilih.maksimal_diskon || 20000;
+      nominalDiskon = diskonKotor > batasMaksimal ? batasMaksimal : diskonKotor;
+    }
   const hargaAkhir = totalHargaAwal - nominalDiskon;
 
   const handlePenumpangChange = (index, field, value) => {
@@ -179,7 +184,9 @@ const Checkout = ({ data, onBack }) => {
                   <div className="border border-green-300 bg-green-50 p-3 rounded-lg flex justify-between items-center">
                     <div>
                       <p className="text-xs font-bold text-green-700 flex items-center gap-1"><FaTicketAlt /> {promoTerpilih.nama}</p>
-                      <p className="text-xs text-green-600">Diskon {promoTerpilih.persen_diskon}% terpasang</p>
+                      <p className="text-xs text-green-600">
+                        Diskon {promoTerpilih.persen_diskon}% (Maks Rp {(promoTerpilih.maksimal_diskon || 20000).toLocaleString('id-ID')}) terpasang
+                      </p>
                     </div>
                     <button onClick={() => setPromoTerpilih(null)} className="text-xs text-red-500 hover:text-red-700 font-bold underline">Batal</button>
                   </div>

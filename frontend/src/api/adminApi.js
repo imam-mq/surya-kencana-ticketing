@@ -105,16 +105,20 @@ export const createAdminPromo = async (payload) => {
   const res = await adminClient.post('/admin/promo/', payload);
   return res.data;
 };
-export const getPromoDetail = async (id) => {
-  const res = await adminClient.get(`/admin/promo/${id}/`);
-  return res.data;
-};
+
 export const updateAdminPromo = async (id, payload) => {
   const res = await adminClient.put(`/admin/promo/${id}/`, payload);
   return res.data;
 };
 export const deleteAdminPromo = async (id) => {
   const res = await adminClient.delete(`/admin/promo/${id}/`);
+  return res.data;
+};
+
+// Detail Promo
+export const getPromoDetail = async (promoId) => {
+  // PERBAIKAN: Gunakan adminClient dan BACKTICK ( ` )
+  const res = await adminClient.get(`/admin/promo/${promoId}/report/`);
   return res.data;
 };
 
