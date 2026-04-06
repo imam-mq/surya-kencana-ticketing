@@ -38,16 +38,6 @@ const LaporanMonitoring = () => {
     },
     {
       id: 3,
-      title: "Promo yang Digunakan",
-      description: "Statistik penggunaan promo",
-      icon: <FaPercent className="text-4xl" />,
-      iconBg: "bg-pink-100",
-      iconColor: "text-pink-600",
-      gradient: "from-pink-500 to-pink-600",
-      route: "/admin/laporan/promo",
-    },
-    {
-      id: 4,
       title: "Agent Transaksi",
       description: "Laporan transaksi agent",
       icon: <FaUserTie className="text-4xl" />,
@@ -57,7 +47,7 @@ const LaporanMonitoring = () => {
       route: "/admin/laporan/agentransaksi",
     },
     {
-      id: 5,
+      id: 4,
       title: "Bukti Transfer",
       description: "Verifikasi bukti transfer",
       icon: <FaFileInvoice className="text-4xl" />,
