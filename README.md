@@ -32,5 +32,5 @@ beberapa fitur seperti login, profil, pemesanan tiket dll menggunakan api yang d
 
 # Project Setup
 ### 1. Clone Repository
-
-https://github.com/imam-mq/surya-kencana-ticketing.git
+```bash
+git clone https://github.com/imam-mq/surya-kencana-ticketing.git
