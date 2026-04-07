@@ -31,15 +31,15 @@ http://127.0.0.1:8000
 beberapa fitur seperti login, profil, pemesanan tiket dll menggunakan api yang disediakan oleh backend 
 
 # Project Setup
-### 1. Clone Repository
-```bash
-git clone https://github.com/imam-mq/surya-kencana-ticketing.git
-
+### 1. Folder
 cd surya-kencana-ticketing
 cd frontend
 
+# 2. Install Dependencies
 npm install
 
-npm run start
+# 3. run project
+npm start
 
+# Build Production
 npm run build
