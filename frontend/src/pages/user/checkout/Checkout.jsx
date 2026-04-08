@@ -2,16 +2,30 @@ import React, { useState, useEffect } from "react";
 import { FaArrowLeft, FaTicketAlt, FaUser } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { getActivePromos, createOrder, cancelOrder } from "../../../api/userApi";
+import { useAuth } from "../../../context/AuthContext";
 
 const Checkout = ({ data, onBack }) => {
   const { trip, seats } = data;
   const hargaPerTiket = Number(trip.harga || 0);
   const totalHargaAwal = seats.length * hargaPerTiket;
   const navigate = useNavigate();
-
-  const [penumpang, setPenumpang] = useState(
-    seats.map(seat => ({ kursi: seat, nama: "", nik: "", telepon: "", gender: "" }))
-  );
+  const { user } = useAuth();
+  const [penumpang, setPenumpang] = useState(() => {
+    return seats.map((seat, index) => {
+      
+      if (index === 0 && user) {
+        return { 
+          kursi: seat, 
+          nama: user.username || "", // Mengambil username dari Context
+          nik: user.nik || user.ktp || "", 
+          telepon: user.telepon || user.no_telp || "", 
+          gender: user.gender || user.jenis_kelamin || "" 
+        };
+      }
+      
+      return { kursi: seat, nama: "", nik: "", telepon: "", gender: "" };
+    });
+  });
 
   const [promoTerpilih, setPromoTerpilih] = useState(null);
   const [showPromoList, setShowPromoList] = useState(false);
@@ -56,6 +70,25 @@ const Checkout = ({ data, onBack }) => {
     if (!isPenumpangValid) {
       alert("Mohon lengkapi Nama dan NIK semua penumpang terlebih dahulu!");
       return;
+    }
+    
+    const nikSet = new Set();
+    for (let i = 0; i < penumpang.length; i++) {
+      const p = penumpang[i];
+      // validasi NIK
+      
+      const nikRegex = /^[0-9]{16}$/;
+      if (!nikRegex.test(p.nik)) {
+        alert('NIK Penumpang ke-${i + 1} tidak valid!\nHarus berupa 16 digit angka tanpa spasi/huruf.');
+        return;
+      }
+
+      // validasi telepon
+      const telpRegex = /^08[0-9]{8,11}$/;
+      if (!telpRegex.test(p.telepon)) {
+        alert(`❌ Nomor Telepon Penumpang ke-${i + 1} tidak valid!\nHarus diawali '08' dan berisi 10-13 digit angka.`);
+        return;
+      }
     }
 
     setLoadingProses(true);

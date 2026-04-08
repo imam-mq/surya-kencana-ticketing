@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-// --- 1. IMPORT FUNGSI API ---
 import { getUserProfile, updateUserProfile } from "../../api/userApi";
 import { useAuth } from "../../context/AuthContext";
 
@@ -18,29 +17,29 @@ const Profil = () => {
 
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-
   const primaryColor = "#3B5998";
 
   // mengambil data dari context
   const { user } = useAuth();
-
   const userId = user?.id;
 
 
-  // --- 2. UPDATE FUNGSI LOAD DATA ---
+  // --- UPDATE FUNGSI LOAD DATA ---
   useEffect(() => {
     if (!userId) return;
     
     getUserProfile(userId)
       .then((data) => {
         setUserData({
-          nama: data.nama || "",
-          email: data.email || "",
-          noKtp: data.noKtp || "",
-          jenisKelamin: data.jenisKelamin || "",
+          // --- 2. PERTAHANAN BERLAPIS SAAT LOAD DATA ---
+          // Jaga-jaga kalau getUserProfile dari backend mengirim nama key yang beda
+          nama: data.nama || data.nama_lengkap || user.nama || "", 
+          email: data.email || user.email || "",
+          noKtp: data.noKtp || data.no_ktp || user.nik || "",
+          jenisKelamin: data.jenisKelamin || data.jenis_kelamin || user.gender || "",
           alamat: data.alamat || "",
-          kotaKab: data.kotaKab || "",
-          noHp: data.noHp || "",
+          kotaKab: data.kotaKab || data.kota_kab || "",
+          noHp: data.noHp || data.telepon || user.telepon || "",
           password: "",
           konfirmasiPassword: "",
         });
@@ -50,7 +49,7 @@ const Profil = () => {
         console.error("Gagal memuat profil:", err);
         setLoading(false);
       });
-  }, [userId]);
+  }, [userId, user]);
 
   const handleChange = (e) => {
     setUserData({ ...userData, [e.target.name]: e.target.value });

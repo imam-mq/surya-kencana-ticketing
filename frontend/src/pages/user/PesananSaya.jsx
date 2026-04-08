@@ -208,7 +208,7 @@ export default function PesananSaya() {
                     <Td px={4} py={3} fontSize="sm" color="gray.700">{item.keberangkatan}</Td>
                     <Td px={4} py={3} fontSize="sm" color="gray.700">{item.kedatangan}</Td>
                     <Td px={4} py={3} fontSize="sm" color="gray.500">{item.jenis_kelamin}</Td>
-                    <Td px={4} py={3} fontSize="sm" fontWeight="500" color="gray.800">{item.nama}</Td>
+                    <Td px={4} py={3} fontSize="xs" fontWeight="500" color="gray.800">{item.nama}</Td>
                     <Td px={4} py={3} fontSize="xs" color="gray.500">{item.email}</Td>
                     <Td px={4} py={3} fontSize="xs" color="gray.500">{item.kontak}</Td>
                     
