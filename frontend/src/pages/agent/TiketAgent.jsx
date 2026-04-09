@@ -210,16 +210,23 @@ const TiketAgent = () => {
         return false;
       }
 
-      const mappedPassengers = passengerData.map(p => ({
-        nama: p.name,
-        ktp: p.no_ktp,
-        hp: p.phone,
-        jk: p.gender === "Perempuan" ? "P" : "L"
+      // --- PERBAIKAN PAYLOAD ---
+      // Kita samakan persis namanya dengan yang ada di Serializer Django
+      const mappedPassengers = passengerData.map((p, index) => ({
+        name: p.name,
+        no_ktp: p.no_ktp,
+        phone: p.phone,
+        gender: p.gender,
+        seat: seats[index] // Masukkan kursi langsung ke dalam data masing-masing penumpang
       }));
 
-      const payload = { jadwal_id: trip.id, seats: seats, passengers: mappedPassengers };
+      // seats di luar dihapus karena sudah masuk ke dalam object penumpang
+      const payload = { 
+        jadwal_id: trip.id, 
+        passengers: mappedPassengers 
+      };
 
-      // Menggunakan API Luar (Sudah otomatis menangkap response dan melempar throw new Error jika gagal)
+      // Menggunakan API Luar
       const data = await createAgentBooking(payload);
       
       setIssuedTickets(data.kode_booking || []);
@@ -227,12 +234,26 @@ const TiketAgent = () => {
 
     } catch (err) {
       console.error("Detail Error:", err);
-      // Pengecekan error handling Axios
+      
+      // --- PERBAIKAN PENANGKAPAN ERROR ---
       if (err.response?.status === 401) {
         alert("Sesi login habis, silakan login ulang.");
+      } else if (err.response?.status === 400) {
+        // Ambil error langsung dari JSON yang dikirim Serializer Django
+        const errorData = err.response.data;
+        let errMsg = "Terjadi kesalahan.";
+        
+        if (errorData.non_field_errors) {
+          errMsg = errorData.non_field_errors[0]; // Tangkap error "NIK sudah terdaftar"
+        } else if (errorData.passengers) {
+          errMsg = "Format data penumpang ada yang salah/kosong.";
+        }
+        
+        alert(`Gagal Booking: ${errMsg}`);
       } else {
         alert(err.response?.data?.error || "Gagal booking, koneksi bermasalah.");
       }
+      
       return false;
     }
   };

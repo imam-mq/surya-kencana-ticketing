@@ -1,3 +1,4 @@
+import { isValidNIK, isValidPhone, hasDuplicateValues } from '../../../utils/validators';
 export default function DataPenumpang({
   showPassengerPopup,
   activeTrip,
@@ -11,13 +12,36 @@ export default function DataPenumpang({
   if (!showPassengerPopup || !activeTrip) return null;
  
   const handleLanjut = () => {
-    if (
+   if (
       passengerData.length !== (selectedSeatsMap[activeTrip.id]?.length || 0) ||
       passengerData.some((p) => !p?.name || !p?.no_ktp || !p?.gender || !p?.phone)
     ) {
       alert("Mohon lengkapi semua data penumpang");
       return;
     }
+    // Cek NIK dan no per penumpang
+    for (let i = 0; i < passengerData.length; i++) {
+      const p = passengerData[i];
+
+      if (!isValidNIK(p.no_ktp)) {
+        alert(`NIK Penumpang ${i + 1} salah!\nHarus berupa 16 digit angka tanpa spasi.`);
+        return;
+      }
+
+      if (!isValidPhone(p.phone)) {
+        alert(`No. HP Penumpang ${i + 1} tidak valid!\nHarus diawali '08' (10-13 digit).`);
+        return;
+      }
+    }
+
+    // cek duplicate NIK 
+    const semuaNIK = passengerData.map((p) => p.no_ktp);
+    if (hasDuplicateValues(semuaNIK)) {
+      alert("Terdeteksi NIK Ganda!\nSetiap penumpang dalam rombongan ini harus memiliki NIK yang berbeda.");
+      return;
+    }
+
+    // jika sudah di cek maka lolo
     setShowPassengerPopup(false);
     setShowConfirmPopup(true);
   };
