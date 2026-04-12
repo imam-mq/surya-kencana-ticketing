@@ -4,11 +4,54 @@ import { FaBus, FaSun } from "react-icons/fa";
 import SubmitButton from "../../components/ui/SubmitButton";
 import { registerUserApi } from "../../api/authApi";
 
-export default function Register() {
-  const primaryColor = "#314D9C";
-  const cardColor = "#D4C8A6";
-  const navigate = useNavigate();
 
+
+const primaryColor = "#314D9C";
+const cardColor = "#D4C8A6";
+
+const inputBase = {
+    borderColor: "#e5e7eb",
+    background: "#fafafa",
+  };
+
+  const handleFocus = (e) => {
+    e.target.style.borderColor = primaryColor;
+    e.target.style.boxShadow = "0 0 0 3px rgba(49,77,156,0.12)";
+    e.target.style.background = "#fff";
+  };
+
+  const handleBlur = (e) => {
+    e.target.style.borderColor = "#e5e7eb";
+    e.target.style.boxShadow = "none";
+    e.target.style.background = "#fafafa";
+  };
+
+const inputClass = "w-full px-4 py-2.5 text-sm rounded-lg border outline-none transition-all duration-200";
+
+  const InputField = ({ label, type = "text", name, placeholder = "", onChange, ...props }) => (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        {label}
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={props.value}
+        onChange={onChange} 
+        placeholder={placeholder}
+        className={inputClass}
+        style={inputBase}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        required
+        {...props}
+      />
+    </div>
+  );
+
+
+export default function Register() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     email: "",
     noKtp: "",
@@ -66,50 +109,11 @@ export default function Register() {
     } catch (err) {
       const errorMsg = err.response?.data?.error || "Terjadi kesalahan server.";
       setError(errorMsg);
+      console.log("Pesan Error Backend:", err.response?.data);
     } finally {
       setIsLoading(false);
     }
   };
-
-  const inputBase = {
-    borderColor: "#e5e7eb",
-    background: "#fafafa",
-  };
-
-  const handleFocus = (e) => {
-    e.target.style.borderColor = primaryColor;
-    e.target.style.boxShadow = "0 0 0 3px rgba(49,77,156,0.12)";
-    e.target.style.background = "#fff";
-  };
-
-  const handleBlur = (e) => {
-    e.target.style.borderColor = "#e5e7eb";
-    e.target.style.boxShadow = "none";
-    e.target.style.background = "#fafafa";
-  };
-
-  const inputClass = "w-full px-4 py-2.5 text-sm rounded-lg border outline-none transition-all duration-200";
-
-  const InputField = ({ label, type = "text", name, placeholder = "", onChange, ...props }) => (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-        {label}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={form[name]}
-        onChange={onChange || handleChange} 
-        placeholder={placeholder}
-        className={inputClass}
-        style={inputBase}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        required
-        {...props}
-      />
-    </div>
-  );
 
   return (
     <div
@@ -206,7 +210,7 @@ export default function Register() {
                 Informasi Akun
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <InputField label="Email" name="email" type="email" placeholder="nama@email.com" />
+                <InputField label="Email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="nama@email.com" />
                 <InputField 
                   label="No KTP" 
                   name="noKtp" 
@@ -229,7 +233,7 @@ export default function Register() {
                 Data Diri
               </p>
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <InputField label="Nama Lengkap" name="nama" placeholder="Nama sesuai KTP" />
+                <InputField label="Nama Lengkap" name="nama" value={form.nama} onChange={handleChange} placeholder="Nama sesuai KTP" />
                 {/* Jenis Kelamin */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -252,9 +256,9 @@ export default function Register() {
                 </div>
               </div>
               <div className="space-y-3">
-                <InputField label="Alamat" name="alamat" placeholder="Jl. Nama Jalan No. X" />
+                <InputField label="Alamat" name="alamat" value={form.alamat} onChange={handleChange}  placeholder="Jl. Nama Jalan No. X" />
                 <div className="grid grid-cols-2 gap-3">
-                  <InputField label="Kota / Kabupaten" name="kotaKab" placeholder="Kota Anda" />
+                  <InputField label="Kota / Kabupaten" name="kotaKab" value={form.kotaKab} onChange={handleChange} placeholder="Kota Anda" />
                   <InputField 
                     label="No HP" 
                     name="noHp" 
@@ -278,8 +282,8 @@ export default function Register() {
                 Keamanan
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <InputField label="Password" name="password" type="password" placeholder="Min. 8 karakter" />
-                <InputField label="Konfirmasi Password" name="konfirmasiPassword" type="password" placeholder="Ulangi password" />
+                <InputField label="Password" name="password" type="password" value={form.password} onChange={handleChange} placeholder="Min. 8 karakter" />
+                <InputField label="Konfirmasi Password" name="konfirmasiPassword" type="password" value={form.konfirmasiPassword} onChange={handleChange} placeholder="Ulangi password" />
               </div>
             </div>
 
