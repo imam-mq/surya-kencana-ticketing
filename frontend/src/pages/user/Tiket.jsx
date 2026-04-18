@@ -1,11 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FaBus, FaCalendarAlt, FaArrowRight } from "react-icons/fa";
-
-// --- PERBAIKAN IMPORT ASSETS & KOMPONEN ---
 import LogoSK1 from "../../assets/images/SK-Logo1.png";
 import Checkout from "./checkout/Checkout";
-
-// Komponen kursi bis
 import SeatGridInline28 from '../../components/kursi/SeatGridInline28';
 import SeatGridSleeper from '../../components/kursi/SeatGridSleeper';
 
@@ -91,6 +87,7 @@ const TripCard = ({ trip, onToggleOpen }) => {
 
 const Tiket = () => {
   const [filters, setFilters] = useState({ origin: "", destination: "", date: "" });
+  const [selectedBusTypes, setSelectedBusTypes] = useState([]);
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -100,6 +97,21 @@ const Tiket = () => {
   const [selectedSeatsMap, setSelectedSeatsMap] = useState({});
 
   useEffect(() => { loadAll(); }, []);
+
+  const handleFilterChange = (tipeBus) => {
+    setSelectedBusTypes((prev) => {
+      if (prev.includes(tipeBus)) {
+        return prev.filter((item) => item !== tipeBus);
+      }
+      return [...prev, tipeBus];
+    });
+  };
+
+  const filteredTrips = trips.filter((trip) => {
+    if (selectedBusTypes.length === 0) return true;
+
+    return selectedBusTypes.includes(trip.bus_type);
+  });
 
   const loadAll = async () => {
     try {
@@ -198,11 +210,26 @@ const Tiket = () => {
         <h2 className="text-2xl font-semibold mb-6">Pencarian Jadwal Keberangkatan</h2>
 
         <div className="bg-white shadow-lg rounded-lg p-6 flex flex-col md:flex-row gap-6 border border-gray-100">
-          <div className="w-full md:w-1/6 border-r pr-6">
-            <h3 className="text-sm font-semibold mb-3">Jenis Bus</h3>
-            <div className="space-y-2 text-sm text-gray-700">
-              <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Surya SK</label>
-              <label className="flex items-center gap-2"><input type="checkbox" /> Sleeper VIP</label>
+          <div className="w-full md:w-1/4 border-r pr-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Jenis Bus</h3>
+            <div className=" border-t border-gray-700 my-3"></div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-gray-700 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded transition">
+                <input type="checkbox" 
+                  checked={selectedBusTypes.includes("Reguler")} 
+                  onChange={() => handleFilterChange("Reguler")}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                /> Surya Kencana Reguler
+              </label>
+
+              <label className="flex items-center gap-2 text-gray-700 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded transition">
+                <input 
+                  type="checkbox" 
+                  checked={selectedBusTypes.includes("VIP Sleeper")}
+                  onChange={() => handleFilterChange("VIP Sleeper")}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                /> Surya Kencana Sleeper
+              </label>
             </div>
           </div>
 
@@ -229,7 +256,7 @@ const Tiket = () => {
             {err && <div className="text-red-600 bg-red-50 p-3 rounded-md text-sm mb-4">{err}</div>}
 
             <div className="space-y-4">
-              {trips.map(t => (
+              {filteredTrips.map(t => (
                 <div key={t.id}>
                   <TripCard trip={t} onToggleOpen={toggleOpen} />
                   {openTripId === t.id && (
