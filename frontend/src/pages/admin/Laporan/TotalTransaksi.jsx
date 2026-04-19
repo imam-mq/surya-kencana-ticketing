@@ -62,24 +62,26 @@ const TotalTransaksi = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  useEffect(() => {
-    const fetchTransaksi = async () => {
-      // try {
-      //   // TODO: Ganti dengan endpoint API yang akan dibuat
-      //   const res = await fetch("http://127.0.0.1:8000/api/accounts/admin/transaksi/", {
-      //     credentials: "include",
-      //   });
-      //   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      //   const data = await res.json();
-      //   setTransaksi(Array.isArray(data) ? data : []);
-      // } catch (err) {
-      //   console.error("Gagal memuat transaksi:", err);
-      // } finally {
-        setLoading(false);
-      // }
-    };
-    fetchTransaksi();
-  }, []);
+  // Set up get data transaksi user -> admin
+
+  // useEffect(() => {
+  //   const fetchTransaksi = async () => {
+  //     // try {
+  //     //   // TODO: Ganti dengan endpoint API yang akan dibuat
+  //     //   const res = await fetch("http://127.0.0.1:8000/api/accounts/admin/transaksi/", {
+  //     //     credentials: "include",
+  //     //   });
+  //     //   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  //     //   const data = await res.json();
+  //     //   setTransaksi(Array.isArray(data) ? data : []);
+  //     // } catch (err) {
+  //     //   console.error("Gagal memuat transaksi:", err);
+  //     // } finally {
+  //       setLoading(false);
+  //     // }
+  //   };
+  //   fetchTransaksi();
+  // }, []);
 
   // ── Filter ──
   const filtered = transaksi.filter((t) => {
