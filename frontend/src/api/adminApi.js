@@ -150,3 +150,10 @@ export const deleteAdminBus = async (id) => {
   const res = await adminClient.delete(`/admin/bus/${id}/`);
   return res.data;
 };
+
+// get data transaksi
+
+export const getTransaksiUserOnline = async () => {
+  const res = await adminClient.get('/admin/transaksi/user-online/');
+  return res.data;
+};

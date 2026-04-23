@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../layout/Sidebar";
 import AdminNavbar from "../layout/AdminNavbar";
 import { FaFileExport, FaFilePdf, FaSearch, FaEye } from "react-icons/fa";
-
+import { getTransaksiUserOnline } from "../../../api/adminApi";
 // ─── Stat Card ────────────────────────────────────────────────
 const StatCard = ({ label, value, icon: Icon, accent, sub }) => (
   <div
@@ -27,34 +27,14 @@ const StatCard = ({ label, value, icon: Icon, accent, sub }) => (
   </div>
 );
 
-// ─── Status Badge ─────────────────────────────────────────────
-const StatusBadge = ({ status }) => {
-  const map = {
-    paid:    { label: "Paid",    cls: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
-    pending: { label: "Pending", cls: "bg-amber-50 text-amber-700",    dot: "bg-amber-500"   },
-    failed:  { label: "Failed",  cls: "bg-red-50 text-red-600",        dot: "bg-red-500"     },
-  };
-  const s = map[status?.toLowerCase()] || map.pending;
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${s.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-      {s.label}
-    </span>
-  );
-};
+
 
 // ─── Main ─────────────────────────────────────────────────────
 const TotalTransaksi = () => {
   const navigate = useNavigate();
 
-  const [transaksi, setTransaksi] = useState([
-    { id: 1, tanggal_transaksi: "18 Sep 2025", nama_akun: "Syahbudin",   tipe_bus: "Surya Kencana AC1", harga: 200000, status: "paid" },
-    { id: 2, tanggal_transaksi: "19 Sep 2025", nama_akun: "Mubaraq",     tipe_bus: "Sleeper VIP",       harga: 350000, status: "paid" },
-    { id: 3, tanggal_transaksi: "20 Sep 2025", nama_akun: "Riska Amelia", tipe_bus: "Surya Kencana AC2", harga: 200000, status: "paid" },
-    { id: 5, tanggal_transaksi: "22 Sep 2025", nama_akun: "Yuda Pratama", tipe_bus: "Sleeper VIP",       harga: 350000, status: "paid" },
-  ])
-
-
+  const [transaksi, setTransaksi] = useState([]);
+  const [summary, setSummary] = useState({ total_pendapatan: 0, total_tiket: 0 });
   const [loading, setLoading]         = useState(true);
   const [searchTerm, setSearchTerm]   = useState("");
   const [dateFrom, setDateFrom]       = useState("");
@@ -62,34 +42,47 @@ const TotalTransaksi = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Set up get data transaksi user -> admin
-
-  // useEffect(() => {
-  //   const fetchTransaksi = async () => {
-  //     // try {
-  //     //   // TODO: Ganti dengan endpoint API yang akan dibuat
-  //     //   const res = await fetch("http://127.0.0.1:8000/api/accounts/admin/transaksi/", {
-  //     //     credentials: "include",
-  //     //   });
-  //     //   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  //     //   const data = await res.json();
-  //     //   setTransaksi(Array.isArray(data) ? data : []);
-  //     // } catch (err) {
-  //     //   console.error("Gagal memuat transaksi:", err);
-  //     // } finally {
-  //       setLoading(false);
-  //     // }
-  //   };
-  //   fetchTransaksi();
-  // }, []);
+  useEffect( () => {
+    const fetchTransaksi = async () => {
+      try {
+        setLoading(true);
+        const res = await getTransaksiUserOnline();
+        console.log("Data dari Django:", res);
+        
+        if (res.success) {
+          setTransaksi(res.data.transactions);
+          setSummary({
+            total_pendapatan: res.data.summary.total_pendapatan,
+            total_tiket: res.data.summary.total_tiket_terjual
+          });
+        }
+      } catch(err) {
+        console.error("Gagal memuat Transaksi", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTransaksi();
+  }, []);
 
   // ── Filter ──
   const filtered = transaksi.filter((t) => {
-    const matchSearch = `${t.nama_akun} ${t.tipe_bus}`
+    // Tambahkan pengaman || "" agar tidak error jika data null
+    const namaAkun = t.nama_akun || "";
+    const tipeBus = t.tipe_bus || "";
+    
+    const matchSearch = `${namaAkun} ${tipeBus}`
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-    const matchFrom = dateFrom ? new Date(t.tanggal_transaksi) >= new Date(dateFrom) : true;
-    const matchTo   = dateTo   ? new Date(t.tanggal_transaksi) <= new Date(dateTo)   : true;
+      
+    // Pastikan membandingkan string dengan string kosong jika date tidak ada
+    const matchFrom = dateFrom && t.tanggal_transaksi !== "-" 
+      ? new Date(t.tanggal_transaksi) >= new Date(dateFrom) 
+      : true;
+    const matchTo   = dateTo && t.tanggal_transaksi !== "-"
+      ? new Date(t.tanggal_transaksi) <= new Date(dateTo)   
+      : true;
+      
     return matchSearch && matchFrom && matchTo;
   });
 
@@ -101,7 +94,6 @@ const TotalTransaksi = () => {
 
   // ── Summary ──
   const totalPendapatan  = transaksi.reduce((s, t) => s + Number(t.harga || 0), 0);
-  const totalPaid        = transaksi.filter((t) => t.status?.toLowerCase() === "paid").length;
 
   const handleExportPDF  = () => alert("Export PDF");
   const handleExportExcel = () => alert("Export Excel");
@@ -212,12 +204,12 @@ const TotalTransaksi = () => {
               <table className="min-w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    {["No", "Tanggal Transaksi", "Nama Akun", "Tipe Bus", "Harga", "Status", "Aksi"].map(
+                    {["No", "Tanggal Transaksi", "Nama Akun", "Tipe Bus", "Harga", "Aksi"].map(
                       (col, i) => (
                         <th
                           key={col}
-                          className={`px-5 py-3 text-xs font-semibold uppercase tracking-widest text-gray-400 ${
-                            i === 4 ? "text-right" : i === 6 ? "text-center" : "text-left"
+                          className={`px-6 py-3 text-xs font-semibold uppercase tracking-widest text-gray-400 ${
+                            i === 4 ? "text-right" : i === 5 ? "text-center" : "text-left"
                           }`}
                         >
                           {col}
@@ -227,25 +219,40 @@ const TotalTransaksi = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {loading ? (
-                    // Skeleton loading
-                    Array.from({ length: PLACEHOLDER }).map((_, idx) => (
-                      <tr key={idx}>
-                        <td className="px-5 py-4 text-sm text-gray-300">{idx + 1}</td>
-                        {[80, 110, 90, 70].map((w, i) => (
-                          <td key={i} className="px-5 py-4">
-                            <div className="h-3 rounded-full bg-gray-100" style={{ width: w }} />
+                    {loading ? (
+                      // Skeleton loading - Sejajar dengan 6 Header Kolom
+                      Array.from({ length: PLACEHOLDER }).map((_, idx) => (
+                        <tr key={idx}>
+                          {/* 1. No (Rata Kiri) */}
+                          <td className="px-5 py-4 text-sm text-gray-300">{idx + 1}</td>
+                          
+                          {/* 2. Tanggal Transaksi (Rata Kiri) */}
+                          <td className="px-5 py-4">
+                            <div className="h-4 w-24 rounded bg-gray-100" />
                           </td>
-                        ))}
-                        <td className="px-5 py-4">
-                          <div className="h-5 w-14 rounded-full bg-gray-100" />
-                        </td>
-                        <td className="px-5 py-4 text-center">
-                          <div className="h-7 w-16 rounded-lg bg-gray-100 mx-auto" />
-                        </td>
-                      </tr>
-                    ))
-                  ) : currentRows.length > 0 ? (
+                          
+                          {/* 3. Nama Akun (Rata Kiri) */}
+                          <td className="px-5 py-4">
+                            <div className="h-4 w-32 rounded bg-gray-100" />
+                          </td>
+                          
+                          {/* 4. Tipe Bus (Rata Kiri) */}
+                          <td className="px-5 py-4">
+                            <div className="h-4 w-28 rounded bg-gray-100" />
+                          </td>
+                          
+                          {/* 5. Harga (Rata Kanan) */}
+                          <td className="px-5 py-4 flex justify-end">
+                            <div className="h-4 w-20 rounded bg-gray-100" />
+                          </td>
+                          
+                          {/* 6. Aksi (Rata Tengah) */}
+                          <td className="px-5 py-4 text-center">
+                            <div className="h-7 w-16 rounded-lg bg-gray-100 mx-auto" />
+                          </td>
+                        </tr>
+                      ))
+                    ) : currentRows.length > 0 ? (
                     currentRows.map((t, idx) => (
                       <tr key={t.id || idx} className="hover:bg-gray-50 transition-colors">
                         <td className="px-5 py-3.5 text-sm text-gray-400 font-medium">
@@ -257,9 +264,6 @@ const TotalTransaksi = () => {
                         <td className="px-5 py-3.5 text-sm text-gray-600">{t.tipe_bus}</td>
                         <td className="px-5 py-3.5 text-sm font-bold text-gray-800 text-right">
                           Rp {Number(t.harga || 0).toLocaleString("id-ID")}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <StatusBadge status={t.status} />
                         </td>
                         <td className="px-5 py-3.5 text-center">
                           <button
@@ -274,7 +278,7 @@ const TotalTransaksi = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-5 py-16 text-center">
+                      <td colSpan={5} className="px-5 py-16 text-center">
                         <p className="text-sm text-gray-400 font-medium">Tidak ada data transaksi</p>
                         <p className="text-xs text-gray-300 mt-1">Coba ubah filter pencarian</p>
                       </td>
