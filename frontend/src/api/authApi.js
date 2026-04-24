@@ -21,6 +21,12 @@ export const loginAdminApi = async (payload) => {
   return res.data;
 };
 
+export const logoutAdminAccount = async (payload) => {
+  const res = await authClient.post('/logout-admin-api/', payload);
+  return res.data;
+};
+
+
 export const loginAgentApi = async (payload) => {
   const res = await authClient.post('/login-agent/', payload);
   return res.data;
