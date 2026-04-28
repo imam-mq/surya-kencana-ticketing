@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
 import { User, LogOut, Menu, Bell, ChevronDown, Settings } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
-
-const API_BASE = "http://127.0.0.1:8000/api/accounts";
+import { logoutAgentAccount } from "../../../api/authApi"
 
 const clearClientSession = () => {
   try {
@@ -19,7 +18,6 @@ const Agent_Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -33,28 +31,13 @@ const Agent_Navbar = () => {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      const res = await fetch(`${API_BASE}/logout_agent/`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
-      });
-
-      if (!res.ok) {
-        const txt = await res.text().catch(() => null);
-        console.warn("Logout endpoint returned non-OK:", res.status, txt);
-      } else {
-        const json = await res.json().catch(() => null);
-        console.debug("logout response:", json);
-      }
+      await logoutAgentAccount({});
+      console.debug("Agent Berhasil Logout");
     } catch (err) {
-      console.warn("logout request failed:", err);
+      console.warn("Logout Agent Gagal", err);
     } finally {
       clearClientSession();
-      window.location.href = "/LoginAdminAgent";
+      window.location.href = "/LoginAdminAgent"
     }
   };
 

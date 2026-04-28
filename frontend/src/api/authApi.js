@@ -34,6 +34,11 @@ export const loginAgentApi = async (payload) => {
   return res.data;
 };
 
+export const logoutAgentAccount = async (payload) => {
+  const res = await authClient.post('/logout_agent/', payload);
+  return res.data;
+}
+
 export const registerUserApi = async (payload) => {
   const res = await authClient.post('/register/', payload);
   return res.data;
