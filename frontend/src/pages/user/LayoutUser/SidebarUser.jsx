@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaUser, FaTicketAlt, FaCog, FaSignOutAlt, FaBars, FaTimes } from "react-icons/fa";
+import { logoutUserApi } from "../../../api/authApi";
 
 const SidebarUser = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,24 +18,20 @@ const SidebarUser = () => {
 
   const handleLogout = async () => {
     try {
-      const csrfToken = getCookie("csrftoken");
-      const response = await fetch("http://127.0.0.1:8000/api/accounts/logout-user/", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken || "",
-        },
-      });
-      const data = await response.json();
+      const data = await logoutUserApi({});
+
       if (data.success) {
         localStorage.removeItem("user");
-        alert("Logout berhasil!");
+        localStorage.removeItem("auth_token");
+        alert("Logout Berhasil!");
         navigate("/login");
-      } else alert(data.message || "Gagal logout");
-    } catch {
-      alert("Terjadi kesalahan koneksi ke server");
-    }
+      } else {
+        alert(data.message || "Gagal Logout");
+      }
+    }catch (err) {
+        console.error("Logout Error", err);
+        alert("Terjadi kesalahan")
+      }
   };
 
   const menuItems = [

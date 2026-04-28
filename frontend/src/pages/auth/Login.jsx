@@ -14,17 +14,17 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { login } = useAuth(); // <--- Mengambil fungsi login dari Context
+  const { login } = useAuth();
   
   const primaryColor = "#314D9C";
   const cardColor = "#D4C8A6";
 
-  // --- PANGGIL FUNGSI CSRF DARI API ---
+  // --- Memanggail fungi crsf api ---
   useEffect(() => {
     getCsrfToken().catch((err) => console.error("Gagal get CSRF:", err));
   }, []);
 
-  // --- FUNGSI SUBMIT MENGGUNAKAN API ---
+  // --- dubmit ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -42,7 +42,7 @@ export default function Login() {
         setError(data.message || "Email atau Password salah");
       }
     } catch (error) {
-      // Tangkap error dari backend (401)
+      // error backend (401)
       setError(error.response?.data?.message || "Terjadi kesalahan koneksi ke server");
     } finally {
       setIsLoading(false);
