@@ -11,11 +11,13 @@ export const getCsrfToken = async () => {
   return res.data;
 };
 
+// Auth Login Logout User
 export const loginUserApi = async (payload) => {
   const res = await authClient.post('/login-user/', payload);
   return res.data;
 };
 
+// Auth Admin Login Logout
 export const loginAdminApi = async (payload) => {
   const res = await authClient.post('/login-admin-api/', payload);
   return res.data;
@@ -26,7 +28,7 @@ export const logoutAdminAccount = async (payload) => {
   return res.data;
 };
 
-
+// Auth Login Logout Agent 
 export const loginAgentApi = async (payload) => {
   const res = await authClient.post('/login-agent/', payload);
   return res.data;
