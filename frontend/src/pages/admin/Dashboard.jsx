@@ -48,8 +48,6 @@ const Dashboard = () => {
     const dashboardStats = [
         { title: "Total User Daftar", value: totalUsers, icon: FaUser, iconClass: "text-orange-500", bgClass: "bg-orange-500/10" },
         { title: "Total Agent", value: totalAgents, icon: FaUsers, iconClass: "text-purple-600", bgClass: "bg-purple-600/10" },
-        { title: "Tiket Terjual", value: "0", icon: FaTicketAlt, iconClass: "text-blue-500", bgClass: "bg-blue-500/10" },
-        { title: "Total Penumpang", value: "0", icon: FaUsers, iconClass: "text-purple-600", bgClass: "bg-purple-600/10" },
     ];
 
     return (
