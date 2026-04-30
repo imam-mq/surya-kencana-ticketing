@@ -114,6 +114,10 @@ export const deleteAdminPromo = async (id) => {
   const res = await adminClient.delete(`/admin/promo/${id}/`);
   return res.data;
 };
+export const getAdminPromoDetailEdit = async (id) => {
+  const res = await adminClient.get(`/admin/promo/${id}/`);
+  return res.data;
+};
 
 // Detail Promo
 export const getPromoDetail = async (promoId) => {

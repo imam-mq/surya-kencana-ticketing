@@ -2,42 +2,43 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "./layout/Sidebar";
 import AdminNavbar from "./layout/AdminNavbar";
 import { useNavigate, useParams } from "react-router-dom";
-
-// --- IMPORT API ---
-import { getPromoDetail, updateAdminPromo } from "../../api/adminApi";
+import { getAdminPromoDetailEdit, updateAdminPromo } from "../../api/adminApi";
 
 const EditPromo = () => {
     const navigate = useNavigate();
-    const { id } = useParams();  // ID dari URL
+    const { id } = useParams();
 
     const [promo, setPromo] = useState({
-        judul: "",
+        nama: "",
         deskripsi: "",
-        diskon: "",
-        periode: "November",
-        status: "Aktif",
-        tanggal: "",
+        persen_diskon: "",
+        maksimal_diskon: "",
+        tanggal_mulai: "",
+        tanggal_selesai: "",
+        status: "active",
     });
 
     useEffect(() => {
-        // Menggunakan API Luar
-        getPromoDetail(id)
-            .then((data) => {
+        // Tarik data promo yang mau diedit dari database
+        getAdminPromoDetailEdit(id)
+            .then((res) => {
+                const data = res.data || res; 
                 setPromo({
-                    judul: data.title,
-                    deskripsi: data.description,
-                    diskon: data.discount_percent,
-                    periode: data.periode,
-                    status: data.active ? "Aktif" : "Non-Aktif",
-                    tanggal: data.start_date,
+                    nama: data.nama || "",
+                    deskripsi: data.deskripsi || "",
+                    persen_diskon: data.persen_diskon || "",
+                    maksimal_diskon: data.maksimal_diskon || "",
+                    tanggal_mulai: data.tanggal_mulai ? data.tanggal_mulai.split("T")[0] : "",
+                    tanggal_selesai: data.tanggal_selesai ? data.tanggal_selesai.split("T")[0] : "",
+                    status: data.status || "active",
                 });
             })
             .catch((err) => {
-                console.error("Error fetching promo details:", err);
+                console.error("Error fetching promo detail:", err);
+                alert("Gagal memuat data promo");
             });
-    }, [id]); 
+    }, [id]);
 
-    // Fungsi untuk menangani perubahan form
     const handleChange = (e) => {
         const { name, value } = e.target;
         setPromo((prev) => ({
@@ -48,25 +49,23 @@ const EditPromo = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         try {
             const payload = {
-                title: promo.judul,
-                description: promo.deskripsi,
-                discount_percent: promo.diskon,
-                periode: promo.periode,
-                start_date: promo.tanggal,
-                active: promo.status === "Aktif",  // Mengubah status menjadi boolean
+                nama: promo.nama,
+                deskripsi: promo.deskripsi,
+                persen_diskon: parseInt(promo.persen_diskon),
+                maksimal_diskon: parseInt(promo.maksimal_diskon),
+                tanggal_mulai: promo.tanggal_mulai,
+                tanggal_selesai: promo.tanggal_selesai,
+                status: promo.status, 
             };
 
-            // Menggunakan API Luar
             await updateAdminPromo(id, payload);
-            
             alert("Promo berhasil diperbarui");
-            navigate("/admin/manajemenpromo");  // Redirect ke halaman manajemen promo
+            navigate("/admin/manajemenpromo");
         } catch (err) {
             console.error("Error updating promo:", err);
-            alert("Terjadi kesalahan saat memperbarui promo: " + (err.response?.data?.error || err.message));
+            alert("Terjadi kesalahan: " + (err.response?.data?.error || err.message));
         }
     };
 
@@ -79,127 +78,63 @@ const EditPromo = () => {
                     <h2 className="text-3xl font-bold mb-6">Edit Promo</h2>
 
                     <form onSubmit={handleSubmit} className="bg-white shadow-lg p-6 rounded-lg">
+                        
+                        {/* BARIS 1: NAMA & DESKRIPSI */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-                            {/* Judul Promo */}
                             <div className="flex flex-col">
-                                <label className="font-semibold text-lg text-gray-700 mb-2">
-                                    Nama Promo <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="judul"
-                                    value={promo.judul}
-                                    onChange={handleChange}
-                                    className="border p-3 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Masukkan Nama Promo"
-                                    required
-                                />
+                                <label className="font-semibold text-lg text-gray-700 mb-2">Nama Promo <span className="text-red-500">*</span></label>
+                                <input type="text" name="nama" value={promo.nama} onChange={handleChange} className="border p-3 rounded-md focus:ring-2 focus:ring-blue-500" required />
                             </div>
-
-                            {/* Deskripsi Promo */}
                             <div className="flex flex-col">
-                                <label className="font-semibold text-lg text-gray-700 mb-2">
-                                    Deskripsi Promo <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="deskripsi"
-                                    value={promo.deskripsi}
-                                    onChange={handleChange}
-                                    className="border p-3 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Masukkan Deskripsi Promo"
-                                    required
-                                />
+                                <label className="font-semibold text-lg text-gray-700 mb-2">Deskripsi</label>
+                                <input type="text" name="deskripsi" value={promo.deskripsi} onChange={handleChange} className="border p-3 rounded-md focus:ring-2 focus:ring-blue-500" />
                             </div>
                         </div>
 
+                        {/* BARIS 2: DISKON & MAKSIMAL DISKON */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-                            {/* Presentase Diskon */}
                             <div className="flex flex-col">
-                                <label className="font-semibold text-lg text-gray-700 mb-2">
-                                    Persentase Diskon <span className="text-red-500">*</span>
-                                </label>
+                                <label className="font-semibold text-lg text-gray-700 mb-2">Persentase Diskon <span className="text-red-500">*</span></label>
                                 <div className="flex items-center">
-                                    <input
-                                        type="number"
-                                        name="diskon"
-                                        value={promo.diskon}
-                                        onChange={handleChange}
-                                        className="border p-3 rounded-l-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Diskon"
-                                        required
-                                    />
+                                    <input type="number" name="persen_diskon" value={promo.persen_diskon} onChange={handleChange} className="border p-3 rounded-l-md focus:ring-2 focus:ring-blue-500 w-full" required />
                                     <span className="border-t border-b border-r p-3 bg-gray-100 text-gray-700">%</span>
                                 </div>
                             </div>
-
-                            {/* Periode Promo */}
                             <div className="flex flex-col">
-                                <label className="font-semibold text-lg text-gray-700 mb-2">
-                                    Periode Promo <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    name="periode"
-                                    value={promo.periode}
-                                    onChange={handleChange}
-                                    className="border p-3 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required
-                                >
-                                    <option value="November">November</option>
-                                    <option value="December">Desember</option>
-                                </select>
+                                <label className="font-semibold text-lg text-gray-700 mb-2">Maksimal Potongan (Rp) <span className="text-red-500">*</span></label>
+                                <div className="flex items-center">
+                                    <span className="border-t border-b border-l p-3 bg-gray-100 text-gray-700 rounded-l-md">Rp</span>
+                                    <input type="number" name="maksimal_diskon" value={promo.maksimal_diskon} onChange={handleChange} className="border p-3 rounded-r-md focus:ring-2 focus:ring-blue-500 w-full" required />
+                                </div>
                             </div>
                         </div>
 
+                        {/* BARIS 3: TANGGAL MULAI & TANGGAL SELESAI */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-                            {/* Status */}
                             <div className="flex flex-col">
-                                <label className="font-semibold text-lg text-gray-700 mb-2">
-                                    Status Promo <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    name="status"
-                                    value={promo.status}
-                                    onChange={handleChange}
-                                    className="border p-3 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required
-                                >
-                                    <option value="Aktif">Aktif</option>
-                                    <option value="Non-Aktif">Non-Aktif</option>
-                                </select>
+                                <label className="font-semibold text-lg text-gray-700 mb-2">Tanggal Mulai <span className="text-red-500">*</span></label>
+                                <input type="date" name="tanggal_mulai" value={promo.tanggal_mulai} onChange={handleChange} className="border p-3 rounded-md focus:ring-2 focus:ring-blue-500" required />
                             </div>
-
-                            {/* Tanggal Promo */}
                             <div className="flex flex-col">
-                                <label className="font-semibold text-lg text-gray-700 mb-2">
-                                    Tanggal Promo <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="date"
-                                    name="tanggal"
-                                    value={promo.tanggal}
-                                    onChange={handleChange}
-                                    className="border p-3 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required
-                                />
+                                <label className="font-semibold text-lg text-gray-700 mb-2">Tanggal Selesai <span className="text-red-500">*</span></label>
+                                <input type="date" name="tanggal_selesai" value={promo.tanggal_selesai} onChange={handleChange} className="border p-3 rounded-md focus:ring-2 focus:ring-blue-500" required />
+                            </div>
+                        </div>
+
+                        {/* BARIS 4: STATUS */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                            <div className="flex flex-col">
+                                <label className="font-semibold text-lg text-gray-700 mb-2">Status Promo <span className="text-red-500">*</span></label>
+                                <select name="status" value={promo.status} onChange={handleChange} className="border p-3 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                                    <option value="active">Aktif</option>
+                                    <option value="inactive">Non-Aktif</option>
+                                </select>
                             </div>
                         </div>
 
                         <div className="flex justify-end gap-4 mt-6">
-                            <button
-                                type="submit"
-                                className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700"
-                            >
-                                Edit Promo
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => navigate("/admin/manajemenpromo")}
-                                className="bg-yellow-500 text-white py-2 px-6 rounded-lg hover:bg-yellow-600"
-                            >
-                                Batal
-                            </button>
+                            <button type="submit" className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700">Simpan Perubahan</button>
+                            <button type="button" onClick={() => navigate("/admin/manajemenpromo")} className="bg-yellow-500 text-white py-2 px-6 rounded-lg hover:bg-yellow-600">Batal</button>
                         </div>
                     </form>
                 </div>

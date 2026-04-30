@@ -160,7 +160,7 @@ const DetailPromo = () => {
 
               <dl>
                 {/* NAMA FIELD DARI BACKEND */}
-                <InfoRow label="Judul/Kode Promo">{promoDetail.kode_promo}</InfoRow>
+                <InfoRow label="Judul/Kode Promo">{promoDetail.nama}</InfoRow>
                 <InfoRow label="Deskripsi">{promoDetail.deskripsi || "-"}</InfoRow>
                 <InfoRow label="Diskon">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
