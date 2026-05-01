@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Sidebar from "./layout/Sidebar";
 import AdminNavbar from "./layout/AdminNavbar";
 import { FaUser, FaUsers, FaTicketAlt, FaTag } from 'react-icons/fa';
-import { getAdminUsers, getAdminAgents } from "../../api/adminApi";
+import { getAdminUsers, getAdminAgents, getAdminPromoList, getAdminLaporanTransaksi, getAdminPendingSetoran } from "../../api/adminApi";
 
 const accentColors = {
     orange: {
@@ -59,18 +59,30 @@ const StatCard = ({ title, value, icon: Icon, color, footer }) => {
 const Dashboard = () => {
     const [totalUsers, setTotalUsers] = useState(0);
     const [totalAgents, setTotalAgents] = useState(0);
-    const [totalSetoranPending] = useState(0);
-    const [totalPromoAktif] = useState(0);
+    const [pendingSetoran, setPendingSetoran] = useState(0);
+    const [totalPromoAktif, setPromoAktif] = useState(0);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const [usersData, agentsData] = await Promise.all([
+                const [usersData, agentsData, promoData, pendingSetoranData] = await Promise.all([
                     getAdminUsers(),
                     getAdminAgents(),
+                    getAdminPromoList(),
+                    getAdminPendingSetoran()
                 ]);
                 setTotalUsers(usersData.length || 0);
                 setTotalAgents(agentsData.length || 0);
+
+                // promo aktif
+                const promoArray = Array.isArray(promoData) ? promoData : (promoData?.data || []);
+                const activePromos = promoArray.filter(p => p.status === 'active');
+                setPromoAktif(activePromos.length);
+
+                // setoran pending
+                const transaksiArray = Array.isArray(pendingSetoranData) ? pendingSetoranData : (pendingSetoranData?.data || [])
+                const pendingTransactions = transaksiArray.filter(t => t.status === 'pending' || t.status === 'unsettled');
+                setPendingSetoran(pendingSetoranData?.total_pending || 0);
             } catch (error) {
                 console.error("Gagal memuat data dashboard:", error);
             }
@@ -95,7 +107,7 @@ const Dashboard = () => {
         },
         {
             title: "Setoran Pending",
-            value: totalSetoranPending,
+            value: pendingSetoran,
             icon: FaTicketAlt,
             color: "amber",
             footer: "Menunggu verifikasi",

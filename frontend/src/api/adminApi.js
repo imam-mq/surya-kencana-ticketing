@@ -137,6 +137,11 @@ export const getAdminLaporanTransaksiDetail = async (id) => {
   return res.data;
 };
 
+export const getAdminPendingSetoran = async () => {
+  const res = await adminClient.get('/admin/setoran-pending/');
+  return res.data;
+};
+
 // Tambah bus 
 export const createAdminBus = async (payload) => {
   const res = await adminClient.post('/admin/bus/', payload);
