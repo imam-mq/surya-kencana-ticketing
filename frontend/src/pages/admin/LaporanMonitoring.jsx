@@ -18,7 +18,7 @@ const LaporanMonitoring = () => {
   const laporanItems = [
     {
       id: 1,
-      title: "Total Transaksi",
+      title: "Transaksi User",
       description: "Lihat laporan transaksi keseluruhan",
       icon: <FaMoneyBillWave className="text-4xl" />,
       iconBg: "bg-blue-100",
