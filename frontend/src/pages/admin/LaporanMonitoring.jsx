@@ -48,7 +48,7 @@ const LaporanMonitoring = () => {
     },
     {
       id: 4,
-      title: "Bukti Transfer",
+      title: "Bukti Transfer Agent",
       description: "Verifikasi bukti transfer",
       icon: <FaFileInvoice className="text-4xl" />,
       iconBg: "bg-orange-100",
