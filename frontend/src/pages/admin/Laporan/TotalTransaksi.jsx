@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../layout/Sidebar";
 import AdminNavbar from "../layout/AdminNavbar";
+import ModalDetailTransaksi from "../components/ModalDetailTransaksi";
 import { FaFileExport, FaFilePdf, FaSearch, FaEye } from "react-icons/fa";
 import { getTransaksiUserOnline } from "../../../api/adminApi";
 // ─── Stat Card ────────────────────────────────────────────────
@@ -41,6 +42,8 @@ const TotalTransaksi = () => {
   const [dateTo, setDateTo]           = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTransaksiId, setSelectedTransaksiId] = useState(null);
 
   useEffect( () => {
     const fetchTransaksi = async () => {
@@ -267,11 +270,13 @@ const TotalTransaksi = () => {
                         </td>
                         <td className="px-5 py-3.5 text-center">
                           <button
-                            onClick={() => navigate(`/admin/transaksi/${t.id}`)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all"
+                              onClick={() => {
+                                  setSelectedTransaksiId(t.id); // Set ID transaksi yang mau diintip
+                                  setIsModalOpen(true);         // Munculkan popup modalnya!
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all"
                           >
-                            <FaEye size={11} />
-                            Detail
+                              <FaEye size={11} /> Detail
                           </button>
                         </td>
                       </tr>
@@ -340,6 +345,11 @@ const TotalTransaksi = () => {
 
         </div>
       </div>
+      <ModalDetailTransaksi 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          transaksiId={selectedTransaksiId} 
+      />
     </div>
   );
 };

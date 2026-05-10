@@ -166,3 +166,9 @@ export const getTransaksiUserOnline = async () => {
   const res = await adminClient.get('/admin/transaksi/user-online/');
   return res.data;
 };
+
+// get data detail informasi penumpang
+export const getAdminTransaksiDetail = async (id) => {
+  const res = await adminClient.get(`/admin/transaksi/user-online/${id}/detail/`);
+  return res.data;
+}
