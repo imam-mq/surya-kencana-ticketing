@@ -172,3 +172,14 @@ export const getAdminTransaksiDetail = async (id) => {
   const res = await adminClient.get(`/admin/transaksi/user-online/${id}/detail/`);
   return res.data;
 }
+
+// get laporan tiket terjual
+export const getLaporanTiketTerjual = async (startDate = "", endDate = "") => {
+  
+  const params = {};
+  if (startDate) params.start_date = startDate;
+  if (endDate) params.end_date = endDate;
+
+  const res = await adminClient.get("/admin/laporan/tiket-terjual/", { params });
+  return res.data;
+}

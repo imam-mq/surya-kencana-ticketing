@@ -1,73 +1,62 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../layout/Sidebar";
 import AdminNavbar from "../layout/AdminNavbar";
-import { FaCalendarAlt, FaFileExport, FaPrint } from "react-icons/fa";
+import { FaCalendarAlt, FaFileExport, FaSpinner } from "react-icons/fa";
+import { getLaporanTiketTerjual } from "../../../api/adminApi";
 
 const TiketTerjual = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  
-  // Data dummy (nanti akan diganti dengan API Django)
-  const laporanData = [
-    {
-      tanggal: "18 Okt 2025",
-      routes: [
-        { 
-          rute: "Terminal Jambrong - Terminal Mandalika", 
-          bus: "Surya Kencana - AC-1 [AC1]", 
-          totalKursi: 28, 
-          tiketTerjual: 28, 
-          tiketTersedia: 0, 
-          persentase: "100%" 
-        }
-      ]
-    },
-    {
-      tanggal: "20 Okt 2025",
-      routes: [
-        { 
-          rute: "Terminal Jambrong - Terminal Mandalika", 
-          bus: "Surya Kencana - AC-2 [AC2]", 
-          totalKursi: 28, 
-          tiketTerjual: 14, 
-          tiketTersedia: 14, 
-          persentase: "50%" 
-        }
-      ]
-    },
-    {
-      tanggal: "30 Nov 2025",
-      routes: [
-        { 
-          rute: "Terminal Jambrong - Terminal Lombok", 
-          bus: "Surya Kencana - Sleeper [SLP]", 
-          totalKursi: 27, 
-          tiketTerjual: 5, 
-          tiketTersedia: 22, 
-          persentase: "18%" 
-        }
-      ]
+
+  const [laporan, setLaporan] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const fetchLaporan = async () => {
+    try {
+      setLoading(true);
+      setErr("");
+
+      const res = await getLaporanTiketTerjual(startDate, endDate);
+
+      if (res.success) {
+        setLaporan(res.data);
+      } else {
+        setErr("Gagal Memuat Data Laporan");
+      }
+    } catch (error) {
+      setErr(error.response?.data?.error || "Terjadi kesalahan saat menghubungi server.");
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchLaporan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCari = () => {
-    alert(`Cari laporan dari ${startDate} sampai ${endDate}`);
+    fetchLaporan();
   };
 
   const handleExportExcel = () => {
-    alert("Export to PDF");
+    alert("Fitur Export to PDF sedang dikembangkan");
   };
 
-  const handlePrint = () => {
-    alert("Print laporan");
-  };
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      <div>
+        <Sidebar />
+      </div>
+      
       <div className="flex-1 flex flex-col">
-        <AdminNavbar />
+        <div>
+          <AdminNavbar />
+        </div>
+
         <div className="p-8 flex-1">
           {/* Header */}
           <div className="mb-8">
@@ -77,10 +66,15 @@ const TiketTerjual = () => {
             <p className="text-gray-500">Rekapitulasi tingkat okupansi bus berdasarkan rentang tanggal.</p>
           </div>
 
+          {err && (
+            <div className="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-r-lg shadow-sm font-medium">
+              {err}
+            </div>
+          )}
+
           {/* Filter Section */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-6">
             <div className="grid grid-cols-12 gap-4 items-end">
-              {/* Start Date (Diperlebar jadi col-span-4) */}
               <div className="col-span-4">
                 <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Tanggal Mulai</label>
                 <div className="relative">
@@ -94,7 +88,6 @@ const TiketTerjual = () => {
                 </div>
               </div>
 
-              {/* End Date (Diperlebar jadi col-span-4) */}
               <div className="col-span-4">
                 <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Tanggal Selesai</label>
                 <div className="relative">
@@ -108,35 +101,24 @@ const TiketTerjual = () => {
                 </div>
               </div>
 
-              {/* Cari Button (Diperlebar jadi col-span-2) */}
               <div className="col-span-2">
                 <button
                   onClick={handleCari}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg font-bold tracking-wide"
+                  disabled={loading}
+                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg font-bold tracking-wide disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
                 >
-                  Terapkan
+                  {loading ? <FaSpinner className="animate-spin" /> : "Terapkan"}
                 </button>
               </div>
 
-              {/* Export Excel Button */}
-              <div className="col-span-1">
+              {/* Export PDF Button (Diperlebar menjadi col-span-2) */}
+              <div className="col-span-2">
                 <button
                   onClick={handleExportExcel}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg flex justify-center items-center"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg flex justify-center items-center gap-2 font-bold"
                   title="Export PDF"
                 >
-                  <FaFileExport size={18} />
-                </button>
-              </div>
-
-              {/* Print Button */}
-              <div className="col-span-1">
-                <button
-                  onClick={handlePrint}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg flex justify-center items-center"
-                  title="Print Laporan"
-                >
-                  <FaPrint size={18} />
+                  <FaFileExport size={18} /> Export PDF
                 </button>
               </div>
             </div>
@@ -148,88 +130,66 @@ const TiketTerjual = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gradient-to-r from-gray-100 to-gray-50">
                   <tr>
-                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">
-                      Tanggal
-                    </th>
-                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">
-                      Rute
-                    </th>
-                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">
-                      Bus
-                    </th>
-                    <th className="py-4 px-6 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">
-                      Total Kursi
-                    </th>
-                    <th className="py-4 px-6 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">
-                      Tiket Terjual
-                    </th>
-                    <th className="py-4 px-6 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">
-                      Sisa
-                    </th>
-                    <th className="py-4 px-6 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Okupansi
-                    </th>
+                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Jadwal</th>
+                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Rute</th>
+                    <th className="py-4 px-6 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Bus</th>
+                    <th className="py-4 px-6 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Total Kursi</th>
+                    <th className="py-4 px-6 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Tiket Terjual</th>
+                    <th className="py-4 px-6 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Sisa</th>
+                    <th className="py-4 px-6 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Okupansi</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {laporanData.map((item, index) => (
-                    <React.Fragment key={index}>
-                      {item.routes.map((route, routeIndex) => (
-                        <tr key={`${index}-${routeIndex}`} className="hover:bg-blue-50 transition-colors duration-200">
-                          {/* RowSpan untuk Tanggal */}
-                          {routeIndex === 0 && (
-                            <td 
-                              className="py-4 px-6 text-sm font-bold text-gray-900 border-r border-gray-200 bg-gray-50 align-top" 
-                              rowSpan={item.routes.length}
-                            >
-                              {item.tanggal}
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-gray-500 font-medium">
+                        <FaSpinner className="animate-spin inline-block mr-2 text-xl text-blue-600" /> Sedang memuat data laporan...
+                      </td>
+                    </tr>
+                  ) : laporan.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-gray-500 font-medium">
+                        Tidak ada data jadwal pada rentang tanggal tersebut.
+                      </td>
+                    </tr>
+                  ) : (
+                    laporan.map((item, index) => (
+                      <React.Fragment key={index}>
+                        {item.routes.map((route, routeIndex) => (
+                          <tr key={`${index}-${routeIndex}`} className="hover:bg-blue-50 transition-colors duration-200">
+                            {routeIndex === 0 && (
+                              <td 
+                                className="py-4 px-6 text-sm font-bold text-gray-900 border-r border-gray-200 bg-gray-50 align-top" 
+                                rowSpan={item.routes.length}
+                              >
+                                {item.tanggal}
+                              </td>
+                            )}
+                            <td className="py-4 px-6 text-sm font-semibold text-gray-700 border-r border-gray-200">{route.rute}</td>
+                            <td className="py-4 px-6 text-sm text-gray-600 border-r border-gray-200">{route.bus}</td>
+                            <td className="py-4 px-6 text-sm font-bold text-gray-900 text-center border-r border-gray-200">{route.totalKursi}</td>
+                            <td className="py-4 px-6 text-sm font-bold text-emerald-600 text-center border-r border-gray-200">{route.tiketTerjual}</td>
+                            <td className="py-4 px-6 text-sm font-bold text-rose-600 text-center border-r border-gray-200">{route.tiketTersedia}</td>
+                            <td className="py-4 px-6 text-center">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                                parseInt(route.persentase) >= 80 ? 'bg-emerald-100 text-emerald-700' : 
+                                parseInt(route.persentase) >= 40 ? 'bg-amber-100 text-amber-700' : 
+                                'bg-rose-100 text-rose-700'
+                              }`}>
+                                {route.persentase}
+                              </span>
                             </td>
-                          )}
-                          <td className="py-4 px-6 text-sm font-semibold text-gray-700 border-r border-gray-200">
-                            {route.rute}
-                          </td>
-                          <td className="py-4 px-6 text-sm text-gray-600 border-r border-gray-200">
-                            {route.bus}
-                          </td>
-                          <td className="py-4 px-6 text-sm font-bold text-gray-900 text-center border-r border-gray-200">
-                            {route.totalKursi}
-                          </td>
-                          <td className="py-4 px-6 text-sm font-bold text-emerald-600 text-center border-r border-gray-200">
-                            {route.tiketTerjual}
-                          </td>
-                          <td className="py-4 px-6 text-sm font-bold text-rose-600 text-center border-r border-gray-200">
-                            {route.tiketTersedia}
-                          </td>
-                          <td className="py-4 px-6 text-center">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                              parseInt(route.persentase) >= 80 ? 'bg-emerald-100 text-emerald-700' : 
-                              parseInt(route.persentase) >= 40 ? 'bg-amber-100 text-amber-700' : 
-                              'bg-rose-100 text-rose-700'
-                            }`}>
-                              {route.persentase}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  ))}
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="flex items-center gap-2">
-                <button className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 text-gray-600 font-bold">«</button>
-                <button className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 text-gray-600 font-bold">‹</button>
-                <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded font-bold shadow">1</button>
-                <button className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 text-gray-600 font-bold">2</button>
-                <button className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 text-gray-600 font-bold">3</button>
-                <span className="text-xs text-gray-600 font-bold px-1">...</span>
-                <button className="px-3 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 text-gray-600 font-bold">26</button>
-                <button className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 text-gray-600 font-bold">›</button>
-                <button className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100 text-gray-600 font-bold">»</button>
-              </div>
+            
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 font-medium">
+              Menampilkan total {laporan.length} hari keberangkatan.
             </div>
           </div>
         </div>
