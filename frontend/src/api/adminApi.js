@@ -6,10 +6,6 @@ const adminClient = axios.create({
   withCredentials: true,
 });
 
-// =========================================================================
-// --- CSRF INTERCEPTOR ---
-// Fungsi ini otomatis berjalan sesaat sebelum request (POST/PUT/DELETE) 
-// =========================================================================
 adminClient.interceptors.request.use((config) => {
   const getCookie = (name) => {
     let cookieValue = null;
